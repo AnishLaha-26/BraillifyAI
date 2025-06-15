@@ -1,9 +1,148 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>BrailleRAP Web</title>
-</head>
-<body>
-    <h1>Welcome to BrailleRAP Web</h1>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BraillifyAI{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <!-- Header -->
+    <div class="p-8 border-b border-gray-700">
+        <h1 class="text-3xl font-bold text-white mb-2">Dashboard</h1>
+        <p class="text-gray-400">Create new textbooks:</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="p-8">
+        <!-- Upload Cards - 4 in a row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Record/Upload Audio -->
+            <div class="bg-gray-800 rounded-2xl p-6 hover:bg-gray-750 transition-colors cursor-pointer group" onclick="openUploadModal('audio')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 bg-blue-600 rounded-xl">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="text-gray-500">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Record or upload audio</h3>
+                <p class="text-gray-400 text-sm">Upload an audio file</p>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="bg-gray-800 rounded-2xl p-6 hover:bg-gray-750 transition-colors cursor-pointer group" onclick="openUploadModal('image')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 bg-green-600 rounded-xl">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="text-gray-500">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Image upload</h3>
+                <p class="text-gray-400 text-sm">Any JPG, PNG, etc!</p>
+            </div>
+
+            <!-- Document Upload -->
+            <div class="bg-gray-800 rounded-2xl p-6 hover:bg-gray-750 transition-colors cursor-pointer group" onclick="openUploadModal('document')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 bg-purple-600 rounded-xl">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="text-gray-500">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Document upload</h3>
+                <p class="text-gray-400 text-sm">Any PDF, DOC, PPT, etc!</p>
+            </div>
+
+            <!-- Type Text Directly -->
+            <div class="bg-gray-800 rounded-2xl p-6 hover:bg-gray-750 transition-colors cursor-pointer group">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 bg-indigo-600 rounded-xl">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="text-gray-500">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Type text</h3>
+                <p class="text-gray-400 text-sm">Enter text directly</p>
+                <form action="/upload" method="post" class="mt-4" onclick="event.stopPropagation()">
+                    <textarea name="text" rows="2" placeholder="Type your text here..." 
+                              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 mb-2 text-sm"></textarea>
+                    <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+                        Convert to Braille
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- All Braille Textbooks Section -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-semibold text-white">Created Braille Textbooks:</h2>
+                <button class="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Create Folder</span>
+                </button>
+            </div>
+            
+            <!-- Textbooks Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Empty state for now -->
+                <div class="col-span-full text-center py-16 text-gray-500">
+                    <svg class="w-20 h-20 mx-auto mb-6 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-xl font-medium text-gray-400 mb-2">No textbooks created yet</h3>
+                    <p class="text-gray-500">Upload your first document, audio, or image to create a braille textbook!</p>
+                    <button onclick="openUploadModal('document')" class="mt-6 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                        Create Your First Textbook
+                    </button>
+                </div>
+                
+                <!-- Example textbook cards (these would be populated dynamically) -->
+                <!-- Uncomment when you have actual textbooks to display -->
+                <!--
+                <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors cursor-pointer">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-white font-medium truncate">Sample Textbook</h4>
+                            <p class="text-gray-400 text-sm">Created 2 hours ago</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 text-xs">PDF • 25 pages</span>
+                        <button class="text-purple-400 hover:text-purple-300 text-sm">View</button>
+                    </div>
+                </div>
+                -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
