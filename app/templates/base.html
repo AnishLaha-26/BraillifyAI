@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BraillifyAI{% endblock %}</title>
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png') }}">
-    
+
     <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
     <!-- Tailwind CSS CDN for development -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -38,13 +40,15 @@
         }
     </script>
 </head>
+
 <body class="bg-gray-900 text-white min-h-screen flex">
     <!-- Sidebar -->
     <div id="sidebar" class="w-64 bg-purple-950 p-6 flex flex-col transition-all duration-300 ease-in-out">
         <!-- Logo and Toggle -->
         <div class="mb-8 flex items-center justify-between">
             <div id="logoSection" class="flex items-center space-x-3">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="BraillifyAI Logo" class="w-8 h-8 flex-shrink-0">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="BraillifyAI Logo"
+                    class="w-8 h-8 flex-shrink-0">
                 <div class="nav-text">
                     <h1 class="text-xl font-bold text-white">BraillifyAI</h1>
                     <div class="w-8 h-1 bg-purple-400 mt-1"></div>
@@ -52,33 +56,39 @@
             </div>
             <button id="sidebarToggle" class="text-white hover:text-purple-300 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                    </path>
                 </svg>
             </button>
         </div>
-        
+
         <!-- Navigation -->
         <nav class="flex-1">
             <ul class="space-y-4">
                 <li>
                     <a href="/" class="flex items-center space-x-3 text-white hover:text-purple-300 transition-colors">
                         <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                            <path
+                                d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z">
+                            </path>
                         </svg>
                         <span class="nav-text">Dashboard</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="flex items-center space-x-3 text-gray-300 hover:text-purple-300 transition-colors">
+                    <a href="#"
+                        class="flex items-center space-x-3 text-gray-300 hover:text-purple-300 transition-colors">
                         <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path>
+                            <path fill-rule="evenodd"
+                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                clip-rule="evenodd"></path>
                         </svg>
                         <span class="nav-text">Settings</span>
                     </a>
                 </li>
             </ul>
         </nav>
-        
+
         <!-- Bottom section -->
         <div class="mt-auto">
             <div class="flex items-center space-x-3">
@@ -99,34 +109,42 @@
     <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 relative">
             <!-- Close button - moved to top right of modal -->
-            <button onclick="closeUploadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-full p-2 transition-colors">
+            <button onclick="closeUploadModal()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-full p-2 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
                 </svg>
             </button>
-            
+
             <div class="text-center">
                 <!-- Document Icon -->
                 <div class="mb-6">
-                    <div id="uploadIcon" class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto">
+                    <div id="uploadIcon"
+                        class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto">
                         <!-- Default document icon -->
                         <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                                clip-rule="evenodd"></path>
                         </svg>
                     </div>
                 </div>
-                
+
                 <h3 id="uploadTitle" class="text-xl font-semibold text-white mb-2">Document upload</h3>
-                
+
                 <!-- Drag and Drop Area -->
-                <div id="dropZone" class="border-2 border-dashed border-gray-600 rounded-lg p-8 mb-4 hover:border-purple-500 transition-colors cursor-pointer">
+                <div id="dropZone"
+                    class="border-2 border-dashed border-gray-600 rounded-lg p-8 mb-4 hover:border-purple-500 transition-colors cursor-pointer">
                     <input type="file" id="fileInput" class="hidden" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt">
                     <p class="text-gray-400">Drag file here or <span class="text-purple-400">click to select</span></p>
                 </div>
-                
+
                 <div class="text-left">
                     <div id="fileList" class="space-y-2 mb-4"></div>
-                    <button id="uploadBtn" onclick="startUpload()" class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50" disabled>
+                    <button id="uploadBtn" onclick="startUpload()"
+                        class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        disabled>
                         Upload Files
                     </button>
                 </div>
@@ -140,20 +158,24 @@
             <div class="text-center">
                 <!-- Document Icon with animation -->
                 <div class="mb-6">
-                    <div class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto animate-pulse">
+                    <div
+                        class="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto animate-pulse">
                         <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                                clip-rule="evenodd"></path>
                         </svg>
                     </div>
                 </div>
-                
+
                 <h3 class="text-xl font-semibold text-white mb-2">Processing your Document...</h3>
-                
+
                 <!-- Progress bar -->
                 <div class="w-full bg-gray-700 rounded-full h-2 mb-4">
-                    <div id="progressBar" class="bg-purple-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    <div id="progressBar" class="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
                 </div>
-                
+
                 <p class="text-gray-400 text-sm">This may take a few moments...</p>
             </div>
         </div>
@@ -169,18 +191,18 @@
 
         function toggleSidebar() {
             sidebarCollapsed = !sidebarCollapsed;
-            
+
             if (sidebarCollapsed) {
                 // Collapse sidebar
                 sidebar.classList.remove('w-64');
                 sidebar.classList.add('w-16');
-                
+
                 // Hide text elements
                 navTexts.forEach(text => {
                     text.classList.add('hidden');
                 });
                 logoSection.classList.add('hidden');
-                
+
                 // Update toggle icon to expand arrow
                 sidebarToggle.innerHTML = `
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,13 +213,13 @@
                 // Expand sidebar
                 sidebar.classList.remove('w-16');
                 sidebar.classList.add('w-64');
-                
+
                 // Show text elements
                 navTexts.forEach(text => {
                     text.classList.remove('hidden');
                 });
                 logoSection.classList.remove('hidden');
-                
+
                 // Update toggle icon to hamburger menu
                 sidebarToggle.innerHTML = `
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,9 +238,12 @@
             const iconContainer = document.getElementById('uploadIcon');
             const title = document.getElementById('uploadTitle');
             const fileInput = document.getElementById('fileInput');
-            
+
+            // Store upload type for validation
+            modal.dataset.uploadType = type;
+
             // Configure modal based on upload type
-            switch(type) {
+            switch (type) {
                 case 'audio':
                     iconContainer.className = 'w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto';
                     iconContainer.innerHTML = `
@@ -229,31 +254,33 @@
                     title.textContent = 'Audio upload';
                     fileInput.accept = 'audio/*';
                     break;
-                    
+
                 case 'image':
                     iconContainer.className = 'w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mx-auto';
                     iconContainer.innerHTML = `
                         <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H5a2 2 0 00-2 2z" clip-rule="evenodd"></path>
                         </svg>
                     `;
                     title.textContent = 'Image upload';
                     fileInput.accept = 'image/*';
                     break;
-                    
+
                 case 'document':
                 default:
                     iconContainer.className = 'w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto';
                     iconContainer.innerHTML = `
                         <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                                clip-rule="evenodd"></path>
                         </svg>
                     `;
                     title.textContent = 'Document upload';
                     fileInput.accept = '.pdf,.doc,.docx,.ppt,.pptx,.txt';
                     break;
             }
-            
+
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
@@ -261,13 +288,13 @@
         function closeUploadModal() {
             document.getElementById('uploadModal').classList.add('hidden');
             document.getElementById('uploadModal').classList.remove('flex');
-            resetUploadModal();
         }
 
         function resetUploadModal() {
             document.getElementById('fileInput').value = '';
             document.getElementById('fileList').innerHTML = '';
             document.getElementById('uploadBtn').disabled = true;
+            window.selectedFiles = null;
         }
 
         // Drag and Drop functionality
@@ -292,92 +319,108 @@
         });
 
         fileInput.addEventListener('change', (e) => {
+            console.log('File input changed, files:', e.target.files);
             handleFiles(e.target.files);
         });
 
         function handleFiles(files) {
             const fileList = document.getElementById('fileList');
             fileList.innerHTML = '';
-            
+
+            window.selectedFiles = files;
+
             Array.from(files).forEach(file => {
                 const fileItem = document.createElement('div');
                 fileItem.className = 'flex items-center justify-between p-2 bg-gray-700 rounded';
                 fileItem.innerHTML = `
-                    <span class="text-sm text-white truncate">${file.name}</span>
-                    <span class="text-xs text-gray-400">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                `;
+            <span class="text-sm text-white truncate">${file.name}</span>
+            <span class="text-xs text-gray-400">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+        `;
                 fileList.appendChild(fileItem);
             });
-            
+
             document.getElementById('uploadBtn').disabled = files.length === 0;
         }
 
         function startUpload() {
             const fileInput = document.getElementById('fileInput');
-            const files = fileInput.files;
-            
+            const files = window.selectedFiles || fileInput.files;
+
             if (files.length === 0) {
                 alert('Please select files to upload');
                 return;
             }
-            
+
             closeUploadModal();
             showProcessingModal();
-            
+
             const formData = new FormData();
-            Array.from(files).forEach(file => {
+            Array.from(files).forEach((file, index) => {
+                console.log(`Adding file ${index}:`, file.name, file.size);
                 formData.append('files', file);
             });
-            
+
+            const uploadModal = document.getElementById('uploadModal');
+            const uploadType = uploadModal.dataset.uploadType || 'document';
+            console.log('Upload type:', uploadType);
+            formData.append('upload_type', uploadType);
+
             const progressBar = document.getElementById('progressBar');
             const xhr = new XMLHttpRequest();
-            
-            // Track upload progress
+
             xhr.upload.addEventListener('progress', (e) => {
                 if (e.lengthComputable) {
                     const percentComplete = (e.loaded / e.total) * 100;
                     progressBar.style.width = percentComplete + '%';
                 }
             });
-            
+
             xhr.addEventListener('load', () => {
+                console.log('XHR Response Status:', xhr.status);
+                console.log('XHR Response Text:', xhr.responseText);
+
                 if (xhr.status === 200) {
                     try {
                         const response = JSON.parse(xhr.responseText);
                         setTimeout(() => {
                             hideProcessingModal();
                             showUploadResults(response);
-                            // Clear the file input
-                            fileInput.value = '';
-                            document.getElementById('fileList').innerHTML = '';
-                            document.getElementById('uploadBtn').disabled = true;
+                            resetUploadModal();
                         }, 500);
                     } catch (e) {
                         hideProcessingModal();
+                        console.error('JSON Parse Error:', e);
                         alert('Upload completed but response was invalid');
+                        resetUploadModal();
                     }
                 } else {
                     hideProcessingModal();
                     try {
                         const errorResponse = JSON.parse(xhr.responseText);
-                        alert(`Upload failed: ${errorResponse.error || 'Unknown error'}`);
+                        console.error('Upload Error Response:', errorResponse);
+                        alert(`Upload failed: ${errorResponse.error || errorResponse.message || 'Unknown error'}`);
+                        resetUploadModal();
                     } catch (e) {
+                        console.error('Error parsing error response:', e);
                         alert(`Upload failed with status: ${xhr.status}`);
+                        resetUploadModal();
                     }
                 }
             });
-            
+
             xhr.addEventListener('error', () => {
                 hideProcessingModal();
+                console.error('XHR Network Error');
                 alert('Upload failed due to network error');
+                resetUploadModal();
             });
-            
+
+            console.log('Sending request to /upload');
             xhr.open('POST', '/upload');
             xhr.send(formData);
         }
-        
+
         function showUploadResults(response) {
-            // Create results modal
             const resultsHtml = `
                 <div id="resultsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div class="bg-gray-800 rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
@@ -385,7 +428,8 @@
                             <h3 class="text-xl font-semibold text-white">Upload Results</h3>
                             <button onclick="closeResultsModal()" class="text-gray-400 hover:text-white">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                                    </path>
                                 </svg>
                             </button>
                         </div>
@@ -419,10 +463,10 @@
                     </div>
                 </div>
             `;
-            
+
             document.body.insertAdjacentHTML('beforeend', resultsHtml);
         }
-        
+
         function closeResultsModal() {
             const modal = document.getElementById('resultsModal');
             if (modal) {
@@ -442,4 +486,5 @@
         }
     </script>
 </body>
+
 </html>
