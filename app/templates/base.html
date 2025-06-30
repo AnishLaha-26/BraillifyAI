@@ -421,6 +421,43 @@
         }
 
         function showUploadResults(response) {
+            // Check if we have successful uploads to redirect to
+            const successfulUploads = response.results.filter(result => result.status === 'success' && result.upload_id);
+            
+            if (successfulUploads.length === 1) {
+                // Single successful upload - redirect to textbook view after a brief delay
+                const uploadId = successfulUploads[0].upload_id;
+                
+                // Show brief success message then redirect
+                const successHtml = `
+                    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+                            <div class="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-white mb-2">Upload Successful!</h3>
+                            <p class="text-gray-300 mb-4">Processing your document and preparing braille preview...</p>
+                            <div class="flex items-center justify-center space-x-2">
+                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                <span class="text-sm text-gray-400">Redirecting...</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', successHtml);
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = `/textbook/${uploadId}`;
+                }, 2000);
+                
+                return;
+            }
+            
+            // Multiple uploads or errors - show detailed results modal
             const resultsHtml = `
                 <div id="resultsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div class="bg-gray-800 rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
@@ -452,6 +489,16 @@
                                         </div>
                                     ` : ''}
                                     ${result.note ? `<p class="text-xs text-yellow-400 mt-2">${result.note}</p>` : ''}
+                                    ${result.upload_id && result.status === 'success' ? `
+                                        <div class="mt-3">
+                                            <a href="/textbook/${result.upload_id}" class="inline-flex items-center text-sm text-purple-400 hover:text-purple-300">
+                                                View Textbook
+                                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    ` : ''}
                                 </div>
                             `).join('')}
                         </div>

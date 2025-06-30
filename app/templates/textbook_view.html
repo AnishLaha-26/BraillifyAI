@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}{{ textbook_title }} - BraillifyAI{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-hidden bg-gray-900">
+    <!-- Header with editable title -->
+    <div class="bg-black border-b border-gray-700 px-6 py-4">
+        <div class="flex items-center">
+            <button onclick="history.back()" class="text-gray-300 hover:text-white transition-colors mr-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </button>
+            <div class="flex-1 min-w-0">
+                <h1 id="textbook-title" class="text-2xl font-bold text-white cursor-pointer hover:text-gray-200 transition-colors truncate py-1" onclick="enableTitleEdit()" title="{{ textbook_title }}">
+                    {{ textbook_title }}
+                </h1>
+            </div>
+            <button id="edit-title-btn" onclick="enableTitleEdit()" class="text-gray-400 hover:text-white transition-colors ml-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Split screen content -->
+    <div class="h-[calc(100vh-80px)] flex gap-6 p-6">
+        <!-- Left Panel: Optimized Text -->
+        <div class="flex-1 flex flex-col bg-gray-800 rounded-lg overflow-hidden">
+            <div class="bg-purple-800 text-white px-4 py-3 border-b border-purple-600">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Optimized Text Preview
+                </h2>
+            </div>
+            
+            <!-- Text Content with Page Numbers -->
+            <div class="flex-1 overflow-y-auto bg-white relative h-full">
+                <div id="optimized-text" class="p-8 prose prose-lg max-w-none text-gray-800 min-h-full">
+                    <div class="print-document">
+                        {% for page_content in text_pages %}
+                        <!-- Page {{ loop.index }} -->
+                        <div class="print-page bg-white shadow-sm border border-gray-200 mb-8 p-8 relative" style="width: 8.5in; min-height: 11in; margin: 0 auto; font-family: 'Times New Roman', serif; line-height: 1.6;">
+                            <!-- Page Header -->
+                            <div class="page-header flex justify-between items-center mb-6 pb-2 border-b border-gray-300">
+                                <div class="text-sm text-gray-600">{{ textbook_title }}</div>
+                                <div class="text-sm text-gray-600">Page {{ loop.index }}</div>
+                            </div>
+                            
+                            <!-- Page Content -->
+                            <div class="page-body" style="font-size: 12pt; line-height: 1.8;">
+                                <div class="formatted-text whitespace-pre-line font-mono" style="font-family: 'Courier New', monospace; font-size: 11pt; line-height: 1.4; text-align: left;">{{ page_content }}</div>
+                            </div>
+                            
+                            <!-- Page Footer -->
+                            <div class="page-footer absolute bottom-4 left-0 right-0 flex justify-center">
+                                <div class="text-xs text-gray-500">— {{ loop.index }} —</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Text Action Buttons -->
+            <div class="bg-gray-800 p-4 border-t border-gray-700">
+                <div class="flex space-x-3">
+                    <button onclick="downloadFile('original')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        📄 Download Original PDF
+                    </button>
+                    <button onclick="downloadFile('optimized')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        📝 Download Optimized Text
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Braille Preview -->
+        <div class="flex-1 flex flex-col bg-gray-800 rounded-lg overflow-hidden">
+            <div class="bg-purple-800 text-white px-4 py-3 border-b border-purple-600">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">⠠⠃</span>
+                    Braille Preview (Grade {{ braille_grade }})
+                </h2>
+            </div>
+            
+            <!-- Braille Content with Page Numbers -->
+            <div class="flex-1 overflow-y-auto bg-purple-50 relative h-full">
+                <div id="braille-text" class="p-8 font-mono text-lg leading-loose text-purple-900 min-h-full">
+                    <div class="braille-page">
+                        <div class="braille-page-number">Braille Page 1</div>
+                        <div class="braille-content whitespace-pre-wrap">{{ braille_text }}</div>
+                    </div>
+                </div>
+                
+                <!-- Pagination info overlay -->
+                <div class="absolute top-4 right-4 bg-purple-900 bg-opacity-90 text-white p-3 rounded-lg text-xs">
+                    <div class="space-y-1">
+                        <div><span class="font-medium">Total Pages:</span> {{ pagination.total_pages }}</div>
+                        <div><span class="font-medium">Chars/Page:</span> {{ pagination.chars_per_page }}</div>
+                        <div><span class="font-medium">Lines/Page:</span> {{ pagination.lines_per_page }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Braille Action Buttons -->
+            <div class="bg-gray-800 p-4 border-t border-gray-700">
+                <div class="flex space-x-3">
+                    <button onclick="downloadFile('braille')" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        ⠠⠃ Download Braille PDF
+                    </button>
+                    <button onclick="downloadFile('gcode')" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        🔧 Download G-code
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-gray-800 rounded-lg p-6 max-w-sm mx-auto border border-purple-600">
+        <div class="flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <span class="text-white">Processing download...</span>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Print layout styling */
+.print-document {
+    font-family: 'Times New Roman', serif;
+}
+
+.print-page {
+    width: 8.5in;
+    min-height: 11in;
+    margin: 0 auto;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.page-header {
+    font-size: 12pt;
+    line-height: 1.6;
+    margin-bottom: 0.5in;
+}
+
+.page-body {
+    font-size: 12pt;
+    line-height: 1.8;
+    text-align: justify;
+}
+
+.page-footer {
+    font-size: 10pt;
+    line-height: 1.2;
+    text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .print-page {
+        width: 100%;
+        min-height: auto;
+    }
+}
+
+/* Sidebar adaptation */
+body:not(.sidebar-collapsed) .print-page {
+    width: 7.5in;
+}
+
+body.sidebar-collapsed .print-page {
+    width: 8.5in;
+}
+</style>
+
+<script>
+// Auto-generated textbook title that can be edited
+function enableTitleEdit() {
+    const titleElement = document.getElementById('textbook-title');
+    const currentTitle = titleElement.textContent.trim();
+    
+    // Create input element
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentTitle;
+    input.className = 'text-2xl font-bold text-white bg-transparent border-b-2 border-purple-400 focus:outline-none focus:border-purple-300 max-w-2xl';
+    input.style.width = Math.max(200, currentTitle.length * 12) + 'px';
+    
+    // Replace title with input
+    titleElement.style.display = 'none';
+    titleElement.parentNode.insertBefore(input, titleElement);
+    input.focus();
+    input.select();
+    
+    // Save on enter or blur
+    const saveTitle = () => {
+        const newTitle = input.value.trim() || currentTitle;
+        titleElement.textContent = newTitle;
+        titleElement.style.display = 'inline';
+        input.remove();
+        
+        // Save to backend
+        fetch('/update_textbook_title', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                upload_id: "{{ upload_id }}",
+                title: newTitle
+            })
+        });
+    };
+    
+    input.addEventListener('blur', saveTitle);
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveTitle();
+    });
+}
+
+// Download functions
+function downloadFile(type) {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    
+    const downloadUrl = `/download/${type}/{{ upload_id }}`;
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Hide loading after a delay
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }, 2000);
+}
+
+// Pagination simulation for display
+function simulatePages() {
+    const textContent = document.getElementById('optimized-text');
+    const brailleContent = document.getElementById('braille-text');
+    
+    // Add page breaks based on content length (simplified)
+    const textHeight = textContent.scrollHeight;
+    const pageHeight = 11 * 96; // Approximate 11 inches in pixels
+    const estimatedPages = Math.ceil(textHeight / pageHeight);
+    
+    if (estimatedPages > 1) {
+        // Add page indicators
+        for (let i = 2; i <= estimatedPages; i++) {
+            const pageBreak = document.createElement('div');
+            pageBreak.className = 'page-break';
+            pageBreak.innerHTML = `<div class="page-number">Page ${i}</div>`;
+            textContent.appendChild(pageBreak);
+        }
+    }
+}
+
+// Auto-save scroll position
+window.addEventListener('beforeunload', () => {
+    const optimizedScroll = document.getElementById('optimized-text').parentElement.scrollTop;
+    const brailleScroll = document.getElementById('braille-text').parentElement.scrollTop;
+    localStorage.setItem('scroll-optimized', optimizedScroll);
+    localStorage.setItem('scroll-braille', brailleScroll);
+});
+
+// Restore scroll position and initialize
+window.addEventListener('load', () => {
+    const optimizedScroll = localStorage.getItem('scroll-optimized');
+    const brailleScroll = localStorage.getItem('scroll-braille');
+    
+    if (optimizedScroll) {
+        document.getElementById('optimized-text').parentElement.scrollTop = optimizedScroll;
+    }
+    if (brailleScroll) {
+        document.getElementById('braille-text').parentElement.scrollTop = brailleScroll;
+    }
+    
+    // Initialize pagination
+    simulatePages();
+});
+</script>
+{% endblock %}
