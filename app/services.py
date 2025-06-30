@@ -109,12 +109,11 @@ class TextOptimizationService:
         text = re.sub(r'[_]{3,}', '', text)  # Remove lines of underscores
         text = re.sub(r'[•·∙◦‣⁃]', '-', text)  # Normalize bullet points
         text = re.sub(r'["""]', '"', text)  # Normalize quotes
-        text = re.sub(r'[''']', "'", text)  # Normalize apostrophes
+        text = re.sub(r'[``]', "'", text)  # Normalize apostrophes
         text = re.sub(r'…', '...', text)  # Normalize ellipsis
-        
-        # Remove emojis and special Unicode characters
+    
+        # Removed emojis and special Unicode characters
         text = re.sub(r'[^\x00-\x7F\u0080-\u00FF]+', ' ', text)
-        
         # Normalize punctuation and spacing
         text = re.sub(r'\s+([,.!?;:])', r'\1', text)  # Remove space before punctuation
         text = re.sub(r'([,.!?;:])(?!\s|$)', r'\1 ', text)  # Add space after punctuation
@@ -349,7 +348,7 @@ IMPORTANT: Return ONLY the formatted text. No explanations or markdown.
     def _wrap_list_item(self, text: str) -> List[str]:
         """Wrap list items with hanging indent"""
         # Extract the list marker
-        match = re.match(r'^([-•*]\s+|\d+\.\s+)', text)
+        match = re.match(r'^([-•*]\s+|\d+[\.\)]\s+)', text)
         if not match:
             return self._wrap_text(text)
         
@@ -365,37 +364,21 @@ IMPORTANT: Return ONLY the formatted text. No explanations or markdown.
         
         words = content.split()
         lines = []
-        current_line = []
-        current_length = 0
-        is_first_line = True
+        current_line = bullet + line
         
-        for word in words:
-            word_length = len(word)
-            max_length = first_line_max if is_first_line else (self.MAX_LINE_LENGTH - len(hanging_indent))
+        while len(current_line) > self.MAX_LINE_LENGTH:
+            # Find last space before line break
+            wrap_pos = current_line.rfind(' ', len(bullet), self.MAX_LINE_LENGTH + 1)
+            if wrap_pos <= len(bullet):  # No space found in first line
+                wrap_pos = current_line.find(' ', len(bullet) + 1)
+                if wrap_pos == -1:  # No space at all
+                    wrap_pos = min(len(current_line), self.MAX_LINE_LENGTH)
             
-            if current_line and current_length + 1 + word_length > max_length:
-                # Save current line
-                if is_first_line:
-                    lines.append(marker + ' '.join(current_line))
-                    is_first_line = False
-                else:
-                    lines.append(hanging_indent + ' '.join(current_line))
-                
-                current_line = [word]
-                current_length = word_length
-            else:
-                if current_line:
-                    current_length += 1 + word_length
-                else:
-                    current_length = word_length
-                current_line.append(word)
+            lines.append(current_line[:wrap_pos].rstrip())
+            current_line = ' ' * (len(bullet) + 2) + current_line[wrap_pos:].lstrip()
         
-        # Add the last line
         if current_line:
-            if is_first_line:
-                lines.append(marker + ' '.join(current_line))
-            else:
-                lines.append(hanging_indent + ' '.join(current_line))
+            lines.append(current_line)
         
         return lines
     
@@ -550,7 +533,7 @@ class BrailleConversionService:
     
     def convert_to_braille(self, text: str, grade: int = 2) -> Dict[str, any]:
         """
-        Convert text to braille using liblouis with proper formatting
+        Convert text to braille using external Braille API
         
         Args:
             text: Text to convert
@@ -560,29 +543,69 @@ class BrailleConversionService:
             Dictionary with braille conversion results
         """
         try:
-            # Pre-process text for Braille formatting
-            formatted_text = self._format_for_braille(text)
+            import requests
             
-            # Choose appropriate braille table
-            table = "en-us-g2.ctb" if grade == 2 else "en-us-g1.ctb"
-            
-            # Convert text to braille
-            braille_text = louis.translateString([table], formatted_text)
-            
-            # Calculate pagination
-            pagination_info = self._calculate_pagination(braille_text)
-            
-            return {
-                "braille_text": braille_text,
-                "original_text": text,
-                "formatted_text": formatted_text,
-                "grade": grade,
-                "table_used": table,
-                "pagination": pagination_info,
-                "status": "success"
+            # Call external Braille API
+            api_url = "http://localhost:5001/convert"
+            payload = {
+                "text": text,
+                "grade": grade
             }
             
+            print(f"DEBUG: Calling Braille API with text length: {len(text)}")
+            
+            response = requests.post(api_url, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if result.get('status') == 'success':
+                    print(f"DEBUG: Braille API success - text length: {len(result.get('braille_text', ''))}")
+                    return {
+                        "braille_text": result.get('braille_text', ''),
+                        "original_text": text,
+                        "formatted_text": text,  # API handles formatting internally
+                        "grade": grade,
+                        "table_used": f"api-grade-{grade}",
+                        "pagination": result.get('pagination', {}),
+                        "status": "success"
+                    }
+                else:
+                    print(f"DEBUG: Braille API error: {result.get('error')}")
+                    return {
+                        "braille_text": "",
+                        "original_text": text,
+                        "formatted_text": "",
+                        "grade": grade,
+                        "pagination": {},
+                        "status": "error",
+                        "error": f"API error: {result.get('error', 'Unknown error')}"
+                    }
+            else:
+                print(f"DEBUG: Braille API HTTP error: {response.status_code}")
+                return {
+                    "braille_text": "",
+                    "original_text": text,
+                    "formatted_text": "",
+                    "grade": grade,
+                    "pagination": {},
+                    "status": "error",
+                    "error": f"API HTTP error: {response.status_code}"
+                }
+                
+        except requests.exceptions.ConnectionError:
+            print("DEBUG: Braille API connection failed - API server not running")
+            return {
+                "braille_text": "",
+                "original_text": text,
+                "formatted_text": "",
+                "grade": grade,
+                "pagination": {},
+                "status": "error",
+                "error": "Braille API server not available. Please start the Braille API server."
+            }
         except Exception as e:
+            print(f"DEBUG: Braille conversion error: {e}")
             return {
                 "braille_text": "",
                 "original_text": text,
@@ -849,53 +872,125 @@ class DocumentProcessingService:
             "file_path": file_path,
             "file_type": file_type,
             "steps_completed": [],
-            "status": "processing"
+            "status": "processing",
+            "errors": []
         }
         
+        
         try:
-            # Step 1: Text extraction (already handled in routes.py for PDFs)
-            # For images, use OCR
+            # Step 1: Text extraction
+            extracted_text = ""
+            
             if file_type == "image":
+                logger.info("Processing image with OCR")
                 ocr_result = self.ocr_service.extract_text_from_image(file_path)
                 if ocr_result["status"] == "success":
                     extracted_text = ocr_result["text"]
                     results["ocr_result"] = ocr_result
                     results["steps_completed"].append("ocr_extraction")
+                    logger.info(f"OCR successful: {len(extracted_text)} characters extracted")
                 else:
-                    results["status"] = "error"
-                    results["error"] = f"OCR failed: {ocr_result.get('error', 'Unknown error')}"
-                    return results
+                    error_msg = f"OCR failed: {ocr_result.get('error', 'Unknown error')}"
+                    results["errors"].append(error_msg)
+                    logger.error(error_msg)
+                    # Continue with empty text - might still want to test other steps
+            
+            elif file_type in ["txt", "text"]:
+                logger.info("Reading text file")
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        extracted_text = f.read()
+                    results["steps_completed"].append("text_extraction")
+                    logger.info(f"Text extraction successful: {len(extracted_text)} characters")
+                except Exception as e:
+                    error_msg = f"Text file reading failed: {str(e)}"
+                    results["errors"].append(error_msg)
+                    logger.error(error_msg)
+            
             else:
-                # For documents, text should already be extracted
-                # This would be passed in or read from file
-                extracted_text = ""  # This would be provided by the caller
+                # For other document types, assume text is already extracted and passed via file
+                logger.info(f"Processing document type: {file_type}")
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        extracted_text = f.read()
+                    results["steps_completed"].append("text_extraction")
+                    logger.info(f"Document text extraction: {len(extracted_text)} characters")
+                except Exception as e:
+                    error_msg = f"Document reading failed: {str(e)}"
+                    results["errors"].append(error_msg)
+                    logger.error(error_msg)
             
-            # Step 2: Text optimization (if requested)
-            if optimize_text and extracted_text:
-                optimization_result = self.text_optimizer.optimize_extracted_text(
-                    extracted_text, "textbook"
-                )
-                optimized_text = optimization_result["optimized_text"]
-                results["optimization_result"] = optimization_result
-                results["steps_completed"].append("text_optimization")
+            results["extracted_text"] = extracted_text
+            
+            # Step 2: Text optimization (if requested and we have text)
+            optimized_text = extracted_text
+            if optimize_text and extracted_text.strip():
+                logger.info("Starting text optimization")
+                try:
+                    optimization_result = self.text_optimizer.optimize_extracted_text(
+                        extracted_text, "textbook"
+                    )
+                    if optimization_result.get("status") == "success":
+                        optimized_text = optimization_result["optimized_text"]
+                        results["optimization_result"] = optimization_result
+                        results["optimization_method"] = optimization_result.get("method", "ai")
+                        results["steps_completed"].append("text_optimization")
+                        logger.info(f"Text optimization successful: {len(optimized_text)} characters")
+                    else:
+                        error_msg = f"Text optimization failed: {optimization_result.get('error', 'Unknown')}"
+                        results["errors"].append(error_msg)
+                        logger.warning(error_msg)
+                        # Continue with original text
+                except Exception as e:
+                    error_msg = f"Text optimization error: {str(e)}"
+                    results["errors"].append(error_msg)
+                    logger.error(error_msg)
+            
+            results["optimized_text"] = optimized_text
+            
+            # Step 3: Braille conversion (if we have text)
+            if optimized_text.strip():
+                logger.info("Starting Braille conversion")
+                try:
+                    braille_result = self.braille_service.convert_to_braille(
+                        optimized_text, braille_grade
+                    )
+                    results["braille_result"] = braille_result
+                    results["steps_completed"].append("braille_conversion")
+                    
+                    if braille_result.get("status") == "success":
+                        logger.info(f"Braille conversion successful: Grade {braille_grade}")
+                    else:
+                        error_msg = f"Braille conversion failed: {braille_result.get('error', 'Unknown')}"
+                        results["errors"].append(error_msg)
+                        logger.warning(error_msg)
+                        
+                except Exception as e:
+                    error_msg = f"Braille conversion error: {str(e)}"
+                    results["errors"].append(error_msg)
+                    logger.error(error_msg)
             else:
-                optimized_text = extracted_text
+                results["errors"].append("No text available for Braille conversion")
             
-            # Step 3: Braille conversion
-            if optimized_text:
-                braille_result = self.braille_service.convert_to_braille(
-                    optimized_text, braille_grade
-                )
-                results["braille_result"] = braille_result
-                results["steps_completed"].append("braille_conversion")
+            # Determine final status
+            if len(results["steps_completed"]) == 0:
+                results["status"] = "failed"
+            elif len(results["errors"]) > 0:
+                results["status"] = "partial_success"
+            else:
+                results["status"] = "completed"
+                
+            logger.info(f"Pipeline completed with status: {results['status']}")
+            logger.info(f"Steps completed: {results['steps_completed']}")
             
-            results["status"] = "completed"
             return results
             
         except Exception as e:
-            logger.error(f"Pipeline error: {e}")
+            logger.error(f"Pipeline critical error: {e}")
+            import traceback
+            traceback.print_exc()
             results["status"] = "error"
-            results["error"] = str(e)
+            results["errors"].append(f"Critical pipeline error: {str(e)}")
             return results
 
     def process_document_full_pipeline(self, file_path: str, file_type: str, 

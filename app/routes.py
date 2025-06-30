@@ -166,12 +166,21 @@ def upload_file():
                     upload.optimization_date = datetime.utcnow()
                     upload.optimization_model = pipeline_result.get('optimization_method', 'pipeline')
                     upload.optimization_notes = f"Pipeline completed: {', '.join(pipeline_result.get('steps_completed', []))}"
-                    
                     # Store Braille results if available
                     if 'braille_result' in pipeline_result:
-                        braille_result = pipeline_result['braille_result']
-                        upload.braille_content = braille_result.get('braille_text', '')
-                        upload.braille_pages = braille_result.get('page_count', 0)
+                                        braille_result = pipeline_result['braille_result']
+                                        upload.braille_text = braille_result.get('braille_text', '')
+                                        upload.braille_content = braille_result.get('braille_text', '')  # Use same content for both fields
+                                        upload.braille_pages = braille_result.get('pagination', {}).get('total_pages', 0)
+                                        upload.braille_chars_per_page = braille_result.get('pagination', {}).get('chars_per_line', 40)
+                                        upload.braille_lines_per_page = braille_result.get('pagination', {}).get('lines_per_page', 25)
+                                        upload.braille_grade = braille_result.get('grade', 2)
+                                        upload.is_braille_converted = True
+                                        upload.braille_conversion_date = datetime.utcnow()
+                                        print(f"DEBUG: Braille conversion saved - Pages: {upload.braille_pages}, Grade: {upload.braille_grade}")
+                    else:
+                        print("DEBUG: No braille_result found in pipeline_result")
+                        print(f"DEBUG: Available keys: {list(pipeline_result.keys())}")
                     
                     # Store PDF paths if generated
                     if 'pdf_result' in pipeline_result:
@@ -304,8 +313,18 @@ def upload_file():
                                     # Store Braille results if available
                                     if 'braille_result' in pipeline_result:
                                         braille_result = pipeline_result['braille_result']
-                                        upload.braille_content = braille_result.get('braille_text', '')
-                                        upload.braille_pages = braille_result.get('page_count', 0)
+                                        upload.braille_text = braille_result.get('braille_text', '')
+                                        upload.braille_content = braille_result.get('braille_text', '')  # Use same content for both fields
+                                        upload.braille_pages = braille_result.get('pagination', {}).get('total_pages', 0)
+                                        upload.braille_chars_per_page = braille_result.get('pagination', {}).get('chars_per_line', 40)
+                                        upload.braille_lines_per_page = braille_result.get('pagination', {}).get('lines_per_page', 25)
+                                        upload.braille_grade = braille_result.get('grade', 2)
+                                        upload.is_braille_converted = True
+                                        upload.braille_conversion_date = datetime.utcnow()
+                                        print(f"DEBUG: Braille conversion saved - Pages: {upload.braille_pages}, Grade: {upload.braille_grade}")
+                                    else:
+                                        print("DEBUG: No braille_result found in pipeline_result")
+                                        print(f"DEBUG: Available keys: {list(pipeline_result.keys())}")
                                     
                                     # Store PDF paths if generated
                                     if 'pdf_result' in pipeline_result:
@@ -385,8 +404,18 @@ def upload_file():
                                     # Store Braille results if available
                                     if 'braille_result' in pipeline_result:
                                         braille_result = pipeline_result['braille_result']
-                                        upload.braille_content = braille_result.get('braille_text', '')
-                                        upload.braille_pages = braille_result.get('page_count', 0)
+                                        upload.braille_text = braille_result.get('braille_text', '')
+                                        upload.braille_content = braille_result.get('braille_text', '')  # Use same content for both fields
+                                        upload.braille_pages = braille_result.get('pagination', {}).get('total_pages', 0)
+                                        upload.braille_chars_per_page = braille_result.get('pagination', {}).get('chars_per_line', 40)
+                                        upload.braille_lines_per_page = braille_result.get('pagination', {}).get('lines_per_page', 25)
+                                        upload.braille_grade = braille_result.get('grade', 2)
+                                        upload.is_braille_converted = True
+                                        upload.braille_conversion_date = datetime.utcnow()
+                                        print(f"DEBUG: Braille conversion saved - Pages: {upload.braille_pages}, Grade: {upload.braille_grade}")
+                                    else:
+                                        print("DEBUG: No braille_result found in pipeline_result")
+                                        print(f"DEBUG: Available keys: {list(pipeline_result.keys())}")
                                     
                                     # Store PDF paths if generated
                                     if 'pdf_result' in pipeline_result:
@@ -601,51 +630,106 @@ def textbook_view(upload_id):
         text_pages = _paginate_text(display_text, words_per_page=500)
 
         # Prepare Braille and Pagination data
-        braille_text = upload.braille_text
+        braille_text = upload.braille_text or upload.braille_content  # Try both fields
         braille_grade = upload.braille_grade or 2  # Default to grade 2
         pagination = {
             'total_pages': upload.braille_pages or 0,
-            'chars_per_page': upload.braille_chars_per_page or 0,
-            'lines_per_page': upload.braille_lines_per_page or 0
+            'chars_per_page': upload.braille_chars_per_page or 40,
+            'lines_per_page': upload.braille_lines_per_page or 25
         }
+        
+        # Get individual page content for proper display
+        braille_pages = []
+        if braille_text:
+            try:
+                from .services import BrailleConversionService
+                braille_service = BrailleConversionService()
+                # Get pagination with individual page content
+                pagination_data = braille_service._calculate_pagination(braille_text)
+                braille_pages = pagination_data.get('pages', [])
+                # Update pagination with accurate data
+                pagination.update({
+                    'total_pages': pagination_data.get('total_pages', 0),
+                    'chars_per_page': pagination_data.get('chars_per_page', 40),
+                    'lines_per_page': pagination_data.get('lines_per_page', 25),
+                    'chars_per_line': pagination_data.get('chars_per_line', 40)
+                })
+            except Exception as e:
+                print(f"Error calculating pagination: {e}")
+                # Fallback: create single page with all content
+                braille_pages = [{
+                    'page_number': 1,
+                    'lines': braille_text.split('\n') if braille_text else [],
+                    'char_count': len(braille_text) if braille_text else 0,
+                    'line_count': len(braille_text.split('\n')) if braille_text else 0
+                }]
+        
+        print(f"DEBUG: Braille data - Text length: {len(braille_text) if braille_text else 0}, Grade: {braille_grade}, Pages: {pagination['total_pages']}")
 
         # Convert to braille on-the-fly if not already available
         if not braille_text and display_text:
             print("DEBUG: Converting to braille on-the-fly")
+            print(f"DEBUG: Display text length: {len(display_text)}")
+            print(f"DEBUG: Display text preview: {display_text[:100]}...")
             try:
                 from .services import BrailleConversionService
                 braille_service = BrailleConversionService()
                 result = braille_service.convert_to_braille(display_text, grade=braille_grade)
+                
+                print(f"DEBUG: Braille conversion result status: {result.get('status')}")
+                print(f"DEBUG: Braille conversion error: {result.get('error', 'None')}")
+                
+                if result.get('status') == 'success':
+                    # Update database with all details
+                    upload.braille_text = result.get('braille_text', '')
+                    upload.braille_content = result.get('braille_text', '')  # Store in both fields
+                    
+                    # Get pagination info
+                    pagination_info = result.get('pagination', {})
+                    upload.braille_pages = pagination_info.get('total_pages', 0)
+                    upload.braille_chars_per_page = pagination_info.get('chars_per_line', 40)
+                    upload.braille_lines_per_page = pagination_info.get('lines_per_page', 25)
+                    upload.braille_grade = result.get('grade', braille_grade)
+                    upload.is_braille_converted = True
+                    upload.braille_conversion_date = datetime.utcnow()
+                    db.session.commit()
 
-                # Update database with all details
-                upload.braille_text = result.get('braille_text')
-                upload.braille_pages = result.get('pages')
-                upload.braille_chars_per_page = result.get('chars_per_page')
-                upload.braille_lines_per_page = result.get('lines_per_page')
-                upload.braille_grade = result.get('grade')
-                upload.is_braille_converted = True
-                upload.braille_conversion_date = datetime.utcnow()
-                db.session.commit()
+                    # Update local variables for rendering this request
+                    braille_text = upload.braille_text
+                    braille_grade = upload.braille_grade
+                    pagination['total_pages'] = upload.braille_pages
+                    pagination['chars_per_page'] = upload.braille_chars_per_page
+                    pagination['lines_per_page'] = upload.braille_lines_per_page
 
-                # Update local variables for rendering this request
-                braille_text = upload.braille_text
-                braille_grade = upload.braille_grade
-                pagination['total_pages'] = upload.braille_pages
-                pagination['chars_per_page'] = upload.braille_chars_per_page
-                pagination['lines_per_page'] = upload.braille_lines_per_page
-
-                print(f"DEBUG: Braille conversion successful, pages: {upload.braille_pages}")
+                    print(f"DEBUG: Braille conversion successful, pages: {upload.braille_pages}")
+                    print(f"DEBUG: Updated braille_text length: {len(braille_text)}")
+                    
+                    # Re-calculate braille_pages after successful conversion
+                    if braille_text:
+                        try:
+                            pagination_data = braille_service._calculate_pagination(braille_text)
+                            braille_pages = pagination_data.get('pages', [])
+                            print(f"DEBUG: Recalculated braille_pages count: {len(braille_pages)}")
+                        except Exception as e:
+                            print(f"DEBUG: Error recalculating pagination: {e}")
+                else:
+                    print(f"DEBUG: Braille conversion failed: {result.get('error', 'Unknown error')}")
+                    braille_text = f"Braille conversion failed: {result.get('error', 'Unknown error')}"
             except Exception as e:
                 print(f"Error converting to braille: {e}")
-                braille_text = "Braille conversion not available"
-
+                import traceback
+                traceback.print_exc()
+                braille_text = f"Braille conversion error: {str(e)}"
+        
         print("DEBUG: Rendering template with pagination")
+        print(f"DEBUG: Final braille_pages count: {len(braille_pages)}")
+        print(f"DEBUG: Final pagination: {pagination}")
         return render_template('textbook_view.html',
                              upload=upload,
                              textbook_title=upload.title,
                              optimized_text=display_text,
                              text_pages=text_pages,
-                             braille_text=braille_text,
+                             braille_pages=braille_pages,
                              braille_grade=braille_grade,
                              pagination=pagination)
 
@@ -657,119 +741,36 @@ def textbook_view(upload_id):
         return redirect(url_for('main.index'))
 
 def _paginate_text(text: str, words_per_page: int = 500) -> list:
-    """Split text into pages for display"""
+    """Split text into pages for display while preserving formatting"""
     if not text:
         return [""]
     
-    words = text.split()
+    # Split by paragraphs first to preserve structure
+    paragraphs = text.split('\n\n')
     pages = []
-    current_page = []
-    word_count = 0
+    current_page_content = []
+    current_word_count = 0
     
-    for word in words:
-        current_page.append(word)
-        word_count += 1
+    for paragraph in paragraphs:
+        # Count words in this paragraph
+        paragraph_words = len(paragraph.split()) if paragraph.strip() else 0
         
-        if word_count >= words_per_page:
-            pages.append(' '.join(current_page))
-            current_page = []
-            word_count = 0
+        # If adding this paragraph would exceed the limit, start a new page
+        if current_word_count > 0 and current_word_count + paragraph_words > words_per_page:
+            # Join current page content preserving formatting
+            pages.append('\n\n'.join(current_page_content))
+            current_page_content = []
+            current_word_count = 0
+        
+        # Add paragraph to current page
+        if paragraph.strip():  # Only add non-empty paragraphs
+            current_page_content.append(paragraph)
+            current_word_count += paragraph_words
+        elif current_page_content:  # Preserve empty paragraphs between content
+            current_page_content.append(paragraph)
     
-    # Add remaining words as the last page
-    if current_page:
-        pages.append(' '.join(current_page))
+    # Add remaining content as the last page
+    if current_page_content:
+        pages.append('\n\n'.join(current_page_content))
     
     return pages if pages else [""]
-
-@main.route('/textbook/<int:upload_id>', methods=['DELETE'])
-def delete_textbook(upload_id):
-    """Delete a textbook and its associated files"""
-    try:
-        upload = Upload.query.get_or_404(upload_id)
-        
-        # Delete associated files
-        if upload.file_path and os.path.exists(upload.file_path):
-            try:
-                os.remove(upload.file_path)
-            except Exception as e:
-                print(f"Error deleting file {upload.file_path}: {e}")
-        
-        # Delete thumbnail if exists
-        thumbnail_path = os.path.join('uploads', 'thumbnails', f"{upload_id}_thumb.png")
-        if os.path.exists(thumbnail_path):
-            try:
-                os.remove(thumbnail_path)
-            except Exception as e:
-                print(f"Error deleting thumbnail {thumbnail_path}: {e}")
-        
-        # Delete from database
-        db.session.delete(upload)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Textbook deleted successfully'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error deleting textbook: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@main.route('/update_textbook_title', methods=['POST'])
-def update_textbook_title():
-    """Update the textbook title"""
-    try:
-        data = request.get_json()
-        upload_id = data.get('upload_id')
-        new_title = data.get('title', '').strip()
-        
-        if not upload_id or not new_title:
-            return jsonify({'error': 'Missing upload_id or title'}), 400
-            
-        upload = Upload.query.get_or_404(upload_id)
-        upload.title = new_title
-        db.session.commit()
-        
-        return jsonify({'success': True, 'title': new_title})
-        
-    except Exception as e:
-        return jsonify({'error': f'Error updating title: {str(e)}'}), 500
-
-@main.route('/download/original/<int:upload_id>')
-def download_original(upload_id):
-    """Download original uploaded file"""
-    try:
-        upload = Upload.query.get_or_404(upload_id)
-        
-        if not upload.file_path or not os.path.exists(upload.file_path):
-            return jsonify({'error': 'File not found'}), 404
-        
-        return send_file(upload.file_path, as_attachment=True, download_name=upload.filename)
-        
-    except Exception as e:
-        return jsonify({'error': f'Error downloading file: {str(e)}'}), 500
-
-@main.route('/download/optimized/<int:upload_id>')
-def download_optimized(upload_id):
-    """Download optimized text as file"""
-    try:
-        upload = Upload.query.get_or_404(upload_id)
-        
-        if not upload.optimized_text:
-            return jsonify({'error': 'No optimized text available'}), 404
-            
-        # Create temporary text file
-        temp_filename = f"{upload.title or 'optimized_text'}.txt"
-        temp_path = os.path.join('uploads', f"temp_{upload_id}_optimized.txt")
-        
-        with open(temp_path, 'w', encoding='utf-8') as f:
-            f.write(upload.optimized_text)
-        
-        return send_file(temp_path, as_attachment=True, download_name=temp_filename)
-        
-    except Exception as e:
-        return jsonify({'error': f'Error downloading optimized text: {str(e)}'}), 500

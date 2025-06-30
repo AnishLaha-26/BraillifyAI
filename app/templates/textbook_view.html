@@ -40,25 +40,25 @@
             
             <!-- Text Content with Page Numbers -->
             <div class="flex-1 overflow-y-auto bg-white relative h-full">
-                <div id="optimized-text" class="p-8 prose prose-lg max-w-none text-gray-800 min-h-full">
+                <div id="optimized-text" class="p-8 max-w-none text-gray-800 min-h-full">
                     <div class="print-document">
                         {% for page_content in text_pages %}
                         <!-- Page {{ loop.index }} -->
-                        <div class="print-page bg-white shadow-sm border border-gray-200 mb-8 p-8 relative" style="width: 8.5in; min-height: 11in; margin: 0 auto; font-family: 'Times New Roman', serif; line-height: 1.6;">
+                        <div class="print-page shadow-sm mb-8 p-8 relative" style="width: 8.5in; min-height: 11in; margin: 0 auto; font-family: 'Courier New', monospace; line-height: 1.4;">
                             <!-- Page Header -->
                             <div class="page-header flex justify-between items-center mb-6 pb-2 border-b border-gray-300">
-                                <div class="text-sm text-gray-600">{{ textbook_title }}</div>
-                                <div class="text-sm text-gray-600">Page {{ loop.index }}</div>
+                                <div class="text-sm text-gray-600" style="font-family: 'Inter', sans-serif;">{{ textbook_title }}</div>
+                                <div class="text-sm text-gray-600" style="font-family: 'Inter', sans-serif;">Page {{ loop.index }}</div>
                             </div>
                             
                             <!-- Page Content -->
-                            <div class="page-body" style="font-size: 12pt; line-height: 1.8;">
-                                <div class="formatted-text whitespace-pre-line font-mono" style="font-family: 'Courier New', monospace; font-size: 11pt; line-height: 1.4; text-align: left;">{{ page_content }}</div>
+                            <div class="page-body" style="font-size: 11pt; line-height: 1.4;">
+                                <div class="formatted-text" style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; text-align: left; width: 40ch; max-width: 40ch; white-space: pre; overflow: hidden;">{{ page_content }}</div>
                             </div>
                             
                             <!-- Page Footer -->
                             <div class="page-footer absolute bottom-4 left-0 right-0 flex justify-center">
-                                <div class="text-xs text-gray-500">— {{ loop.index }} —</div>
+                                <div class="text-xs text-gray-500" style="font-family: 'Inter', sans-serif;">— {{ loop.index }} —</div>
                             </div>
                         </div>
                         {% endfor %}
@@ -91,10 +91,32 @@
             <!-- Braille Content with Page Numbers -->
             <div class="flex-1 overflow-y-auto bg-purple-50 relative h-full">
                 <div id="braille-text" class="p-8 font-mono text-lg leading-loose text-purple-900 min-h-full">
-                    <div class="braille-page">
-                        <div class="braille-page-number">Braille Page 1</div>
-                        <div class="braille-content whitespace-pre-wrap">{{ braille_text }}</div>
-                    </div>
+                    {% if braille_pages %}
+                        {% for page in braille_pages %}
+                        <div class="braille-page mb-8 p-6 bg-white border border-purple-200 rounded-lg shadow-sm">
+                            <div class="braille-page-number text-center text-purple-700 font-bold mb-4 text-sm">
+                                Braille Page {{ page.page_number }} of {{ pagination.total_pages }}
+                            </div>
+                            <div class="braille-content" style="font-family: 'DejaVu Sans Mono', 'Courier New', monospace; font-size: 18px; line-height: 1.6; letter-spacing: 0.2em; white-space: pre-wrap; color: #4c1d95; width: 40ch; max-width: 40ch; overflow: hidden;">
+{%- for line in page.lines -%}
+{{ line }}
+{% if not loop.last %}
+{% endif %}
+{%- endfor -%}
+                            </div>
+                            <div class="braille-page-info text-xs text-purple-600 mt-4 pt-2 border-t border-purple-100">
+                                Lines: {{ page.line_count }} | Characters: {{ page.char_count }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="braille-page">
+                            <div class="braille-page-number">No Braille content available</div>
+                            <div class="braille-content text-purple-600">
+                                Braille conversion is in progress or failed. Please try refreshing the page.
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
                 
                 <!-- Pagination info overlay -->
