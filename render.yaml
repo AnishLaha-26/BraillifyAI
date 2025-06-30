@@ -1,0 +1,30 @@
+services:
+  # Main web service
+  - type: web
+    name: braillifyai
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app --worker-class eventlet -w 1 --threads 2 --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.16
+      - key: FLASK_ENV
+        value: production
+      - key: UPLOAD_FOLDER
+        value: /opt/render/project/src/uploads
+      - key: MAX_CONTENT_LENGTH
+        value: "16777216"  # 16MB
+      - key: BRAILLE_API_URL
+        value: http://braillifyai-api:10001  # Internal service discovery
+
+  # Braille API service
+  - type: worker
+    name: braillifyai-api
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python -m app.braille_api --port $PORT"
+    envVars:
+      - key: PORT
+        value: 10001
+      - key: PYTHONUNBUFFERED
+        value: "true"
