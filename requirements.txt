@@ -12,4 +12,4 @@ pytesseract>=0.3.10
 pdf2image>=1.16.3
 reportlab>=4.0.4
 python-docx>=0.8.11
-liblouis>=3.26.0
+

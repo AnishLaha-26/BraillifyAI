@@ -774,3 +774,210 @@ def _paginate_text(text: str, words_per_page: int = 500) -> list:
         pages.append('\n\n'.join(current_page_content))
     
     return pages if pages else [""]
+
+@main.route("/textbook/<int:upload_id>", methods=['DELETE'])
+def delete_textbook(upload_id):
+    """Delete a textbook and its associated files"""
+    try:
+        print(f"DEBUG: delete_textbook called with upload_id: {upload_id}")
+        
+        # Find the upload record
+        upload = Upload.query.get(upload_id)
+        if not upload:
+            print(f"DEBUG: Upload {upload_id} not found")
+            return jsonify({'success': False, 'error': 'Textbook not found'}), 404
+        
+        print(f"DEBUG: Found upload: {upload.filename}")
+        
+        # Delete associated files
+        files_to_delete = []
+        
+        # Original file
+        if upload.file_path and os.path.exists(upload.file_path):
+            files_to_delete.append(upload.file_path)
+        
+        # Thumbnail file
+        thumbnail_dir = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), 'thumbnails')
+        thumbnail_path = os.path.join(thumbnail_dir, f"{upload_id}_thumb.png")
+        if os.path.exists(thumbnail_path):
+            files_to_delete.append(thumbnail_path)
+        
+        # Try alternative paths based on filename
+        upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        alt_paths = [
+            os.path.join(upload_dir, f"{upload_id}_{upload.filename}"),
+            os.path.join(upload_dir, upload.filename)
+        ]
+        
+        for alt_path in alt_paths:
+            if os.path.exists(alt_path):
+                files_to_delete.append(alt_path)
+        
+        # Delete files
+        deleted_files = []
+        for file_path in files_to_delete:
+            try:
+                os.remove(file_path)
+                deleted_files.append(file_path)
+                print(f"DEBUG: Deleted file: {file_path}")
+            except Exception as e:
+                print(f"DEBUG: Failed to delete file {file_path}: {e}")
+        
+        # Delete database record
+        db.session.delete(upload)
+        db.session.commit()
+        
+        print(f"DEBUG: Successfully deleted upload {upload_id}")
+        print(f"DEBUG: Deleted files: {deleted_files}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Textbook deleted successfully',
+            'deleted_files': len(deleted_files)
+        })
+        
+    except Exception as e:
+        print(f"ERROR: Failed to delete textbook {upload_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Rollback database changes
+        db.session.rollback()
+        
+        return jsonify({
+            'success': False, 
+            'error': f'Failed to delete textbook: {str(e)}'
+        }), 500
+
+@main.route("/textbook/<int:upload_id>/gcode", methods=['GET'])
+def download_gcode(upload_id):
+    """Generate and download G-code for 3D printing Braille text"""
+    try:
+        print(f"DEBUG: download_gcode called with upload_id: {upload_id}")
+        
+        # Find the upload record
+        upload = Upload.query.get_or_404(upload_id)
+        print(f"DEBUG: Found upload: {upload.filename}")
+        
+        # Get braille text
+        braille_text = upload.braille_text or upload.braille_content
+        if not braille_text:
+            print("DEBUG: No braille text available, generating on-the-fly")
+            
+            # Generate braille text on-the-fly if not available
+            display_text = upload.optimized_text if upload.optimized_text else upload.text_content
+            if not display_text:
+                return jsonify({'error': 'No text content available for G-code generation'}), 400
+            
+            try:
+                from .services import BrailleConversionService
+                braille_service = BrailleConversionService()
+                result = braille_service.convert_to_braille(display_text, grade=2)
+                
+                if result.get('status') == 'success':
+                    braille_text = result.get('braille_text', '')
+                else:
+                    return jsonify({'error': f'Braille conversion failed: {result.get("error")}'}), 500
+            except Exception as e:
+                return jsonify({'error': f'Braille conversion error: {str(e)}'}), 500
+        
+        # Generate G-code
+        try:
+            from .services import GCodeGenerationService
+            gcode_service = GCodeGenerationService()
+            
+            # Get printer settings from request parameters
+            settings = {}
+            if request.args.get('speed'):
+                settings['speed'] = int(request.args.get('speed'))
+            if request.args.get('head_down'):
+                settings['head_down_position'] = float(request.args.get('head_down'))
+            if request.args.get('head_up'):
+                settings['head_up_position'] = float(request.args.get('head_up'))
+            
+            result = gcode_service.generate_gcode(braille_text, settings)
+            
+            if result.get('status') != 'success':
+                return jsonify({'error': f'G-code generation failed: {result.get("error")}'}), 500
+            
+            gcode = result.get('gcode', '')
+            dimensions = result.get('dimensions', {})
+            stats = result.get('stats', {})
+            
+            print(f"DEBUG: G-code generated successfully")
+            print(f"DEBUG: Dimensions: {dimensions}")
+            print(f"DEBUG: Stats: {stats}")
+            
+            # Create filename
+            safe_filename = secure_filename(upload.filename or 'braille_text')
+            if safe_filename.endswith('.pdf'):
+                safe_filename = safe_filename[:-4]
+            gcode_filename = f"{safe_filename}_braille.gcode"
+            
+            # Create response with G-code file
+            response = current_app.response_class(
+                gcode,
+                mimetype='text/plain',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{gcode_filename}"',
+                    'Content-Type': 'text/plain; charset=utf-8'
+                }
+            )
+            
+            print(f"DEBUG: Sending G-code file: {gcode_filename}")
+            return response
+            
+        except Exception as e:
+            print(f"ERROR: G-code generation failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'G-code generation error: {str(e)}'}), 500
+            
+    except Exception as e:
+        print(f"ERROR: Failed to generate G-code for upload {upload_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to generate G-code: {str(e)}'}), 500
+
+@main.route("/textbook/<int:upload_id>/gcode/preview", methods=['GET'])
+def preview_gcode(upload_id):
+    """Preview G-code generation details without downloading"""
+    try:
+        upload = Upload.query.get_or_404(upload_id)
+        
+        # Get braille text
+        braille_text = upload.braille_text or upload.braille_content
+        if not braille_text:
+            # Generate braille text on-the-fly
+            display_text = upload.optimized_text if upload.optimized_text else upload.text_content
+            if not display_text:
+                return jsonify({'error': 'No text content available'}), 400
+            
+            from .services import BrailleConversionService
+            braille_service = BrailleConversionService()
+            result = braille_service.convert_to_braille(display_text, grade=2)
+            
+            if result.get('status') == 'success':
+                braille_text = result.get('braille_text', '')
+            else:
+                return jsonify({'error': f'Braille conversion failed: {result.get("error")}'}), 500
+        
+        # Generate G-code preview
+        from .services import GCodeGenerationService
+        gcode_service = GCodeGenerationService()
+        result = gcode_service.generate_gcode(braille_text)
+        
+        if result.get('status') != 'success':
+            return jsonify({'error': f'G-code generation failed: {result.get("error")}'}), 500
+        
+        # Return preview information
+        return jsonify({
+            'success': True,
+            'dimensions': result.get('dimensions', {}),
+            'settings': result.get('settings', {}),
+            'stats': result.get('stats', {}),
+            'gcode_preview': result.get('gcode', '')[:500] + '...' if len(result.get('gcode', '')) > 500 else result.get('gcode', '')
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to preview G-code: {str(e)}'}), 500

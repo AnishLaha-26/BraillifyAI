@@ -53,7 +53,7 @@
                             
                             <!-- Page Content -->
                             <div class="page-body" style="font-size: 11pt; line-height: 1.4;">
-                                <div class="formatted-text" style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; text-align: left; width: 40ch; max-width: 40ch; white-space: pre; overflow: hidden;">{{ page_content }}</div>
+                                <div class="formatted-text" style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; text-align: left; width: 40ch; max-width: 40ch; white-space: pre-line; overflow-wrap: break-word;">{{ page_content }}</div>
                             </div>
                             
                             <!-- Page Footer -->
@@ -133,10 +133,13 @@
             <div class="bg-gray-800 p-4 border-t border-gray-700">
                 <div class="flex space-x-3">
                     <button onclick="downloadFile('braille')" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                        ⠠⠃ Download Braille PDF
+                        ⠃ Download Braille Text
                     </button>
-                    <button onclick="downloadFile('gcode')" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                        🔧 Download G-code
+                    <button onclick="previewGCode()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        🖨️ Preview G-code
+                    </button>
+                    <button onclick="downloadGCode()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        📄 Download G-code
                     </button>
                 </div>
             </div>
@@ -271,6 +274,16 @@ function downloadFile(type) {
         overlay.classList.add('hidden');
         overlay.classList.remove('flex');
     }, 2000);
+}
+
+function previewGCode() {
+    // TO DO: implement preview functionality
+    console.log('Preview G-code button clicked');
+}
+
+function downloadGCode() {
+    // TO DO: implement download functionality
+    console.log('Download G-code button clicked');
 }
 
 // Pagination simulation for display

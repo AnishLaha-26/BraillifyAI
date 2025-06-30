@@ -143,11 +143,11 @@ class TextOptimizationService:
 Format this text for Braille conversion following these EXACT rules:
 
 1. Titles must be in ALL CAPS with blank lines before and after
-2. Start each paragraph with exactly 2 spaces
-3. Each line must be 40 characters or less
-4. Put blank lines between sections
-5. Format lists with dash (-) for bullets
-6. Remove any remaining URLs or metadata
+2. Start each paragraph with exactly 2 spaces (but don't worry about line length)
+3. Put blank lines between sections
+4. Format lists with dash (-) for bullets
+5. Remove any remaining URLs or metadata
+6. Keep paragraphs as continuous text (line wrapping will be handled separately)
 
 TEXT TO FORMAT:
 {text}
@@ -266,39 +266,90 @@ IMPORTANT: Return ONLY the formatted text. No explanations or markdown.
         - Wrap lines to max 40 characters
         - Add 2-space indent to paragraphs
         - Handle lists properly
+        - Reconstruct broken paragraphs (words on individual lines)
         """
         logger.info("Step 3: Line wrapping for Braille")
         
         lines = text.split('\n')
         wrapped_lines = []
+        i = 0
         
-        for line in lines:
-            line = line.rstrip()
+        while i < len(lines):
+            line = lines[i].rstrip()
             
             # Empty lines pass through
             if not line:
                 wrapped_lines.append('')
+                i += 1
                 continue
             
-            # Titles (all caps, no indent)
-            if line.isupper() and len(line) <= self.MAX_LINE_LENGTH:
-                wrapped_lines.append(line)
+            # Check if this is a title (all caps)
+            if line.isupper():
+                if len(line) <= self.MAX_LINE_LENGTH:
+                    wrapped_lines.append(line)
+                else:
+                    wrapped_lines.extend(self._wrap_text(line, indent=''))
+                i += 1
                 continue
             
             # Check if this is a list item
-            is_list_item = re.match(r'^[-•*]\s+', line) or re.match(r'^\d+\.\s+', line)
-            
-            if is_list_item:
-                # Handle list items with hanging indent
-                wrapped_lines.extend(self._wrap_list_item(line))
-            else:
-                # Regular paragraph or long title
-                if line.isupper():
-                    # Long title - wrap without indent
-                    wrapped_lines.extend(self._wrap_text(line, indent=''))
+            if re.match(r'^[-•*]\s+', line) or re.match(r'^\d+\.\s+', line):
+                if len(line) <= self.MAX_LINE_LENGTH:
+                    wrapped_lines.append(line)
                 else:
-                    # Regular paragraph - wrap with indent
-                    wrapped_lines.extend(self._wrap_text(line, indent=self.PARAGRAPH_INDENT))
+                    wrapped_lines.extend(self._wrap_list_item(line))
+                i += 1
+                continue
+            
+            # Check if this looks like a broken paragraph (short lines that should be combined)
+            if len(line) <= 20 and not line.startswith('  '):  # Short line, not already indented
+                # Look ahead to see if we have multiple short lines that should be combined
+                paragraph_lines = [line]
+                j = i + 1
+                
+                while j < len(lines):
+                    next_line = lines[j].rstrip()
+                    
+                    # Stop if we hit an empty line, title, or list item
+                    if (not next_line or 
+                        next_line.isupper() or 
+                        re.match(r'^[-•*]\s+', next_line) or 
+                        re.match(r'^\d+[\.\)]\s+', next_line) or
+                        next_line.startswith('  ')):
+                        break
+                    
+                    # If it's another short line, add it to the paragraph
+                    if len(next_line) <= 20:
+                        paragraph_lines.append(next_line)
+                        j += 1
+                    else:
+                        # If we hit a long line, include it and stop
+                        paragraph_lines.append(next_line)
+                        j += 1
+                        break
+                
+                # Reconstruct the paragraph
+                reconstructed_paragraph = ' '.join(paragraph_lines)
+                
+                # Wrap the reconstructed paragraph
+                wrapped_lines.extend(self._wrap_text(reconstructed_paragraph, indent=self.PARAGRAPH_INDENT))
+                
+                # Skip the lines we've processed
+                i = j
+                continue
+            
+            # Line is already properly formatted or long enough
+            if len(line) <= self.MAX_LINE_LENGTH:
+                # If it's not indented, add paragraph indent
+                if not line.startswith('  '):
+                    wrapped_lines.append(self.PARAGRAPH_INDENT + line)
+                else:
+                    wrapped_lines.append(line)
+            else:
+                # Line is too long, needs wrapping
+                wrapped_lines.extend(self._wrap_text(line, indent=self.PARAGRAPH_INDENT))
+            
+            i += 1
         
         # Clean up multiple blank lines
         result = []
@@ -746,7 +797,7 @@ class BrailleConversionService:
                 # Regular text wrapping
                 while len(line) > self.BRAILLE_CHARS_PER_LINE:
                     # Try to break at word boundaries - be more aggressive
-                    wrap_pos = line.rfind(' ', 0, self.BRAILLE_CHARS_PER_LINE - 2)  # Leave 2 char margin
+                    wrap_pos = line[:self.BRAILLE_CHARS_PER_LINE].rfind(' ')
                     if wrap_pos <= 0:  # No space found, force break
                         wrap_pos = self.BRAILLE_CHARS_PER_LINE - 3  # Leave 3 char margin for safety
                     wrapped_lines.append(indent + line[:wrap_pos].rstrip())
@@ -768,7 +819,7 @@ class BrailleConversionService:
                 
                 if (is_title or is_section_break or 
                     (is_header and not wrapped_lines[i+1].startswith('  ') and 
-                     not wrapped_lines[i+1].startswith(('-', '*', '•', '‣', '⁃')))):
+                     not wrapped_lines[i+1].startswith(('-', '*', '•', '‣', '⁃'))):
                     result.append('')
         
         return '\n'.join(result).strip()
@@ -854,6 +905,262 @@ class BrailleConversionService:
         }
 
 
+class GCodeGenerationService:
+    """
+    G-code generation service for 3D printing Braille text
+    Based on BrailleRap implementation
+    """
+    
+    def __init__(self):
+        # Braille dimensions (standard values from BrailleRap)
+        self.MARGIN_WIDTH = 20.0          # mm
+        self.MARGIN_HEIGHT = 20.0         # mm  
+        self.PAPER_WIDTH = 170.0          # mm
+        self.PAPER_HEIGHT = 125.0         # mm
+        self.LETTER_WIDTH = 2.54          # mm
+        self.DOT_RADIUS = 1.25            # mm
+        self.LETTER_PADDING = 3.75        # mm
+        self.LINE_PADDING = 5.3           # mm
+        
+        # Printer settings
+        self.HEAD_DOWN_POSITION = -2.0    # mm (embossing position)
+        self.HEAD_UP_POSITION = 10.0      # mm (travel position)
+        self.SPEED = 5000                 # mm/min
+        
+        # Coordinate settings
+        self.INVERT_X = False
+        self.INVERT_Y = False
+        self.MIRROR_X = False
+        self.MIRROR_Y = False
+        self.DELTA_PRINTER = False
+        self.GO_TO_ZERO = False
+        
+        # Braille dot mapping (6-dot braille)
+        # Dots are numbered 1-6 in standard braille pattern:
+        # 1 4
+        # 2 5  
+        # 3 6
+        self.DOT_MAP = [
+            [1, 2, 3],  # Left column (x=0)
+            [4, 5, 6]   # Right column (x=1)
+        ]
+        
+        # Unicode braille to dot pattern mapping
+        self.unicode_to_dots = self._create_unicode_dot_mapping()
+    
+    def _create_unicode_dot_mapping(self):
+        """Create mapping from Unicode braille characters to dot patterns"""
+        mapping = {}
+        
+        # Unicode braille pattern starts at U+2800 (⠀)
+        # Each bit represents a dot: bit 0=dot 1, bit 1=dot 2, etc.
+        for i in range(256):  # 2^8 = 256 possible combinations
+            unicode_char = chr(0x2800 + i)
+            dots = []
+            
+            # Convert bit pattern to dot numbers
+            if i & 0x01: dots.append(1)  # bit 0 -> dot 1
+            if i & 0x02: dots.append(2)  # bit 1 -> dot 2  
+            if i & 0x04: dots.append(3)  # bit 2 -> dot 3
+            if i & 0x08: dots.append(4)  # bit 3 -> dot 4
+            if i & 0x10: dots.append(5)  # bit 4 -> dot 5
+            if i & 0x20: dots.append(6)  # bit 5 -> dot 6
+            # Ignore bits 6,7 for 6-dot braille
+            
+            mapping[unicode_char] = dots
+            
+        return mapping
+    
+    def _gcode_set_absolute_positioning(self):
+        """Set absolute positioning mode"""
+        return 'G90;\r\n'
+    
+    def _gcode_set_speed(self, speed):
+        """Set movement speed"""
+        return f'G1 F{speed};\r\n'
+    
+    def _gcode_position(self, x=None, y=None, z=None):
+        """Format position coordinates"""
+        code = ''
+        if x is not None:
+            code += f' X{x:.2f}'
+        if y is not None:
+            code += f' Y{y:.2f}'
+        if z is not None:
+            code += f' Z{z:.2f}'
+        code += ';\r\n'
+        return code
+    
+    def _gcode_move_to(self, x=None, y=None, z=None):
+        """Generate G1 move command"""
+        return 'G1' + self._gcode_position(x, y, z)
+    
+    def _gcode_go_to(self, x=None, y=None, z=None):
+        """Generate G0 rapid move command"""
+        return 'G0' + self._gcode_position(x, y, z)
+    
+    def generate_gcode(self, braille_text: str, settings: dict = None) -> dict:
+        """
+        Generate G-code for 3D printing braille text
+        
+        Args:
+            braille_text: Unicode braille text to print
+            settings: Optional printer settings override
+            
+        Returns:
+            dict with gcode, dimensions, and metadata
+        """
+        try:
+            # Apply custom settings if provided
+            if settings:
+                for key, value in settings.items():
+                    if hasattr(self, key.upper()):
+                        setattr(self, key.upper(), value)
+            
+            # Initialize G-code
+            gcode = self._gcode_set_absolute_positioning()
+            gcode += self._gcode_set_speed(self.SPEED)
+            
+            if self.GO_TO_ZERO:
+                gcode += self._gcode_move_to(0, 0, 0)
+            
+            gcode += self._gcode_move_to(z=self.HEAD_UP_POSITION)
+            
+            # Initialize position
+            current_x = self.MARGIN_WIDTH
+            current_y = self.MARGIN_HEIGHT
+            
+            # Track dimensions
+            max_x = current_x
+            max_y = current_y
+            
+            # Process each character
+            lines = braille_text.split('\n')
+            
+            for line in lines:
+                current_x = self.MARGIN_WIDTH  # Reset to left margin
+                
+                for char in line:
+                    # Skip non-braille characters
+                    if char not in self.unicode_to_dots:
+                        if char == ' ':
+                            # Space character - just advance position
+                            current_x += self.LETTER_WIDTH + self.LETTER_PADDING
+                        continue
+                    
+                    # Get dot pattern for this character
+                    dots = self.unicode_to_dots[char]
+                    
+                    # Convert to printer coordinates
+                    gx = self.INVERT_X and -current_x or (self.PAPER_WIDTH - current_x)
+                    gy = -current_y  # Canvas Y goes down, printer Y goes up
+                    
+                    if self.DELTA_PRINTER:
+                        gx -= self.PAPER_WIDTH / 2
+                        gy += self.PAPER_HEIGHT / 2
+                    elif not self.INVERT_Y:
+                        gy += self.PAPER_HEIGHT
+                    
+                    # Move to character position
+                    gcode += self._gcode_move_to(
+                        self.MIRROR_X and -gx or gx,
+                        self.MIRROR_Y and -gy or gy
+                    )
+                    
+                    # Draw each dot
+                    for y in range(3):  # 3 rows
+                        for x in range(2):  # 2 columns
+                            dot_number = self.DOT_MAP[x][y]
+                            
+                            if dot_number in dots:
+                                # Calculate dot position
+                                dot_x = current_x + x * self.LETTER_WIDTH
+                                dot_y = current_y + y * self.LETTER_WIDTH
+                                
+                                # Convert to printer coordinates
+                                if x > 0 or y > 0:  # Skip first dot move (already positioned)
+                                    gx = self.INVERT_X and -dot_x or (self.PAPER_WIDTH - dot_x)
+                                    gy = -dot_y
+                                    
+                                    if self.DELTA_PRINTER:
+                                        gx -= self.PAPER_WIDTH / 2
+                                        gy += self.PAPER_HEIGHT / 2
+                                    elif not self.INVERT_Y:
+                                        gy += self.PAPER_HEIGHT
+                                    
+                                    gcode += self._gcode_move_to(
+                                        self.MIRROR_X and -gx or gx,
+                                        self.MIRROR_Y and -gy or gy
+                                    )
+                                
+                                # Emboss the dot
+                                gcode += self._gcode_move_to(z=self.HEAD_DOWN_POSITION)
+                                gcode += self._gcode_move_to(z=self.HEAD_UP_POSITION)
+                    
+                    # Advance to next character position
+                    current_x += self.LETTER_WIDTH + self.LETTER_PADDING
+                    max_x = max(max_x, current_x)
+                    
+                    # Check if we need to wrap to next line
+                    if current_x + self.LETTER_WIDTH + self.DOT_RADIUS > self.PAPER_WIDTH - self.MARGIN_WIDTH:
+                        break
+                
+                # Move to next line
+                current_y += 3 * self.LETTER_WIDTH + self.LINE_PADDING
+                max_y = max(max_y, current_y)
+                
+                # Check if we're out of paper
+                if current_y > self.PAPER_HEIGHT - self.MARGIN_HEIGHT:
+                    break
+            
+            # Finish G-code
+            gcode += self._gcode_move_to(z=self.HEAD_UP_POSITION)
+            if self.GO_TO_ZERO:
+                gcode += self._gcode_move_to(0, 0, 0)
+            
+            # Calculate dimensions
+            width = max_x - self.MARGIN_WIDTH
+            height = max_y - self.MARGIN_HEIGHT
+            
+            return {
+                'status': 'success',
+                'gcode': gcode,
+                'dimensions': {
+                    'width': round(width, 1),
+                    'height': round(height, 1),
+                    'paper_width': self.PAPER_WIDTH,
+                    'paper_height': self.PAPER_HEIGHT
+                },
+                'settings': {
+                    'speed': self.SPEED,
+                    'head_down': self.HEAD_DOWN_POSITION,
+                    'head_up': self.HEAD_UP_POSITION,
+                    'letter_width': self.LETTER_WIDTH,
+                    'dot_radius': self.DOT_RADIUS
+                },
+                'stats': {
+                    'lines': len(lines),
+                    'characters': len([c for c in braille_text if c in self.unicode_to_dots]),
+                    'estimated_time_minutes': self._estimate_print_time(gcode)
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"G-code generation error: {e}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'gcode': '',
+                'dimensions': {'width': 0, 'height': 0}
+            }
+    
+    def _estimate_print_time(self, gcode: str) -> int:
+        """Rough estimate of print time in minutes"""
+        lines = gcode.count('\r\n')
+        # Very rough estimate: ~0.1 seconds per G-code line
+        return max(1, int(lines * 0.1 / 60))
+
+
 class DocumentProcessingService:
     """Main service that orchestrates all document processing steps"""
     
@@ -861,6 +1168,7 @@ class DocumentProcessingService:
         self.text_optimizer = TextOptimizationService()
         self.ocr_service = OCRService()
         self.braille_service = BrailleConversionService()
+        self.gcode_service = GCodeGenerationService()
     
     def process_document_full_pipeline(self, file_path: str, file_type: str, 
                                      optimize_text: bool = True, 
@@ -972,6 +1280,28 @@ class DocumentProcessingService:
             else:
                 results["errors"].append("No text available for Braille conversion")
             
+            # Step 4: G-code generation
+            if optimized_text.strip():
+                logger.info("Starting G-code generation")
+                try:
+                    gcode_result = self.gcode_service.generate_gcode(
+                        braille_result["braille_text"]
+                    )
+                    results["gcode_result"] = gcode_result
+                    results["steps_completed"].append("gcode_generation")
+                    
+                    if gcode_result.get("status") == "success":
+                        logger.info(f"G-code generation successful")
+                    else:
+                        error_msg = f"G-code generation failed: {gcode_result.get('error', 'Unknown')}"
+                        results["errors"].append(error_msg)
+                        logger.warning(error_msg)
+                        
+                except Exception as e:
+                    error_msg = f"G-code generation error: {str(e)}"
+                    results["errors"].append(error_msg)
+                    logger.error(error_msg)
+            
             # Determine final status
             if len(results["steps_completed"]) == 0:
                 results["status"] = "failed"
@@ -990,7 +1320,8 @@ class DocumentProcessingService:
             import traceback
             traceback.print_exc()
             results["status"] = "error"
-            results["errors"].append(f"Critical pipeline error: {str(e)}")
+            results["error"] = str(e)
+            results["errors"].append(f"Pipeline error: {str(e)}")
             return results
 
     def process_document_full_pipeline(self, file_path: str, file_type: str, 
