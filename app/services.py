@@ -581,10 +581,18 @@ class BrailleConversionService:
         self.BRAILLE_CHARS_PER_LINE = 40  # Standard braille line width
         self.BRAILLE_LINES_PER_PAGE = 25  # Standard braille page height
         self.CHARS_PER_PAGE = self.BRAILLE_CHARS_PER_LINE * self.BRAILLE_LINES_PER_PAGE
+        
+        # Initialize local Braille converter
+        try:
+            from braille_api import BrailleConverter
+            self.converter = BrailleConverter()
+        except ImportError:
+            print("Warning: Could not import BrailleConverter from braille_api. Using fallback.")
+            self.converter = None
     
     def convert_to_braille(self, text: str, grade: int = 2) -> Dict[str, any]:
         """
-        Convert text to braille using external Braille API
+        Convert text to braille using the local BrailleConverter
         
         Args:
             text: Text to convert
@@ -594,46 +602,7 @@ class BrailleConversionService:
             Dictionary with braille conversion results
         """
         try:
-            import requests
-            
-            # Call external Braille API
-            api_url = "http://localhost:5001/convert"
-            payload = {
-                "text": text,
-                "grade": grade
-            }
-            
-            print(f"DEBUG: Calling Braille API with text length: {len(text)}")
-            
-            response = requests.post(api_url, json=payload, timeout=30)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                if result.get('status') == 'success':
-                    print(f"DEBUG: Braille API success - text length: {len(result.get('braille_text', ''))}")
-                    return {
-                        "braille_text": result.get('braille_text', ''),
-                        "original_text": text,
-                        "formatted_text": text,  # API handles formatting internally
-                        "grade": grade,
-                        "table_used": f"api-grade-{grade}",
-                        "pagination": result.get('pagination', {}),
-                        "status": "success"
-                    }
-                else:
-                    print(f"DEBUG: Braille API error: {result.get('error')}")
-                    return {
-                        "braille_text": "",
-                        "original_text": text,
-                        "formatted_text": "",
-                        "grade": grade,
-                        "pagination": {},
-                        "status": "error",
-                        "error": f"API error: {result.get('error', 'Unknown error')}"
-                    }
-            else:
-                print(f"DEBUG: Braille API HTTP error: {response.status_code}")
+            if not text or not text.strip():
                 return {
                     "braille_text": "",
                     "original_text": text,
@@ -641,20 +610,35 @@ class BrailleConversionService:
                     "grade": grade,
                     "pagination": {},
                     "status": "error",
-                    "error": f"API HTTP error: {response.status_code}"
+                    "error": "No text provided for conversion"
                 }
-                
-        except requests.exceptions.ConnectionError:
-            print("DEBUG: Braille API connection failed - API server not running")
+            
+            # Format text for Braille conversion
+            formatted_text = self._format_for_braille(text)
+            
+            # Convert to Braille using local converter
+            if self.converter:
+                result = self.converter.convert_to_braille({
+                    "text": formatted_text,
+                    "grade": grade
+                })
+                braille_text = result.get("braille", "")
+            else:
+                # Fallback to simple character mapping if converter not available
+                braille_text = self._simple_braille_mapping(formatted_text)
+            
+            # Calculate pagination
+            pagination = self._calculate_pagination(braille_text)
+            
             return {
-                "braille_text": "",
+                "braille_text": braille_text,
                 "original_text": text,
-                "formatted_text": "",
+                "formatted_text": formatted_text,
                 "grade": grade,
-                "pagination": {},
-                "status": "error",
-                "error": "Braille API server not available. Please start the Braille API server."
+                "pagination": pagination,
+                "status": "success"
             }
+            
         except Exception as e:
             print(f"DEBUG: Braille conversion error: {e}")
             return {
@@ -666,6 +650,16 @@ class BrailleConversionService:
                 "status": "error",
                 "error": str(e)
             }
+    
+    def _simple_braille_mapping(self, text: str) -> str:
+        """Simple fallback Braille mapping"""
+        mapping = {
+            'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑', 'f': '⠋', 'g': '⠛', 'h': '⠓',
+            'i': '⠊', 'j': '⠚', 'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕', 'p': '⠏',
+            'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞', 'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭',
+            'y': '⠽', 'z': '⠵', ' ': ' ', '\n': '\n'
+        }
+        return ''.join(mapping.get(c.lower(), c) for c in text)
     
     def _format_for_braille(self, text: str) -> str:
         """
@@ -821,7 +815,7 @@ class BrailleConversionService:
                     (is_header and not wrapped_lines[i+1].startswith('  ') and 
                      not wrapped_lines[i+1].startswith(('-', '*', '•', '‣', '⁃')))):  # Added missing closing parenthesis
                     result.append('')
-        
+    
         return '\n'.join(result).strip()
     
     def _calculate_pagination(self, braille_text: str) -> Dict[str, any]:
@@ -1317,8 +1311,6 @@ class DocumentProcessingService:
             
         except Exception as e:
             logger.error(f"Pipeline critical error: {e}")
-            import traceback
-            traceback.print_exc()
             results["status"] = "error"
             results["error"] = str(e)
             results["errors"].append(f"Pipeline error: {str(e)}")
