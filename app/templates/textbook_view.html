@@ -112,8 +112,11 @@
                     {% else %}
                         <div class="braille-page">
                             <div class="braille-page-number">No Braille content available</div>
-                            <div class="braille-content text-purple-600">
-                                Braille conversion is in progress or failed. Please try refreshing the page.
+                            <div id="braille-fallback" class="braille-content text-purple-600" style="display: none;">
+                                <!-- Client-side converted Braille will be inserted here -->
+                            </div>
+                            <div id="braille-error" class="braille-content text-purple-600">
+                                Braille conversion is in progress or failed. Trying client-side conversion...
                             </div>
                         </div>
                     {% endif %}
@@ -350,6 +353,180 @@ window.addEventListener('load', () => {
     
     // Initialize pagination
     simulatePages();
+});
+
+// Enhanced client-side Braille conversion
+const brailleMap = {
+    // Lowercase letters (Grade 1 Braille)
+    'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑', 'f': '⠋', 'g': '⠛', 'h': '⠓',
+    'i': '⠊', 'j': '⠚', 'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕', 'p': '⠏',
+    'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞', 'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭',
+    'y': '⠽', 'z': '⠵',
+    
+    // Numbers (prefixed with number sign)
+    '0': '⠴', '1': '⠂', '2': '⠆', '3': '⠒', '4': '⠲', '5': '⠢',
+    '6': '⠖', '7': '⠶', '8': '⠦', '9': '⠔',
+    
+    // Punctuation and symbols
+    ' ': ' ', '\n': '\n', '\t': '  ', '\r': '',
+    '.': '⠄', ',': '⠂', '?': '⠢', '!': '⠖', ';': '⠆', ':': '⠒',
+    '-': '⠤', '(': '⠣', ')': '⠜', '"': '⠦', "'": '⠄',
+    '/': '⠌', '\\': '⠡', '@': '⠈', '#': '⠼', '$': '⠈⠎',
+    '%': '⠨⠴', '&': '⠈⠯', '*': '⠐⠔', '+': '⠬', '=': '⠐⠂',
+    '<': '⠣', '>': '⠜', '[': '⠪', ']': '⠻', '_': '⠸⠤',
+    
+    // Uppercase letters (add capital sign before letter)
+    'A': '⠠⠁', 'B': '⠠⠃', 'C': '⠠⠉', 'D': '⠠⠙', 'E': '⠠⠑', 'F': '⠠⠋', 'G': '⠠⠛', 'H': '⠠⠓',
+    'I': '⠠⠊', 'J': '⠠⠚', 'K': '⠠⠅', 'L': '⠠⠇', 'M': '⠠⠍', 'N': '⠠⠝', 'O': '⠠⠕', 'P': '⠠⠏',
+    'Q': '⠠⠟', 'R': '⠠⠗', 'S': '⠠⠎', 'T': '⠠⠞', 'U': '⠠⠥', 'V': '⠠⠧', 'W': '⠠⠺', 'X': '⠠⠭',
+    'Y': '⠠⠽', 'Z': '⠠⠵'
+};
+
+// Function to convert text to Braille with proper formatting
+function textToBraille(text) {
+    if (!text) return '';
+    
+    // Replace common HTML entities and normalize spaces
+    text = text.replace(/&[a-z]+;|&#\d+;/g, ' ')
+               .replace(/\s+/g, ' ')
+               .trim();
+    
+    let result = [];
+    let inNumber = false;
+    
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        let mapped = brailleMap[char];
+        
+        // Handle numbers (add number sign before first digit)
+        if (/\d/.test(char)) {
+            if (!inNumber) {
+                result.push('⠼'); // Number sign
+                inNumber = true;
+            }
+            mapped = brailleMap[char];
+        } else {
+            inNumber = false;
+            
+            // Handle uppercase letters (add capital sign)
+            if (/[A-Z]/.test(char)) {
+                mapped = brailleMap[char];
+            }
+        }
+        
+        result.push(mapped || char);
+    }
+    
+    return result.join('');
+}
+
+// Function to format Braille text with proper line breaks
+function formatBrailleText(brailleText, charsPerLine = 40) {
+    if (!brailleText) return '';
+    
+    const lines = [];
+    const words = brailleText.split(/\s+/);
+    let currentLine = [];
+    let currentLength = 0;
+    
+    for (const word of words) {
+        // If adding this word would exceed line length, start new line
+        if (currentLength + word.length > charsPerLine && currentLength > 0) {
+            lines.push(currentLine.join(' '));
+            currentLine = [word];
+            currentLength = word.length + 1;
+        } else {
+            currentLine.push(word);
+            currentLength += word.length + (currentLength > 0 ? 1 : 0);
+        }
+    }
+    
+    // Add the last line
+    if (currentLine.length > 0) {
+        lines.push(currentLine.join(' '));
+    }
+    
+    return lines.join('\n');
+}
+
+// Main function to convert and display Braille
+function convertToBrailleClientSide() {
+    try {
+        // Try to get the optimized text from the page
+        const optimizedText = document.querySelector('.optimized-content') || 
+                            document.querySelector('.text-content') ||
+                            document.querySelector('body');
+        
+        const fallbackBraille = document.getElementById('braille-fallback');
+        const errorElement = document.getElementById('braille-error');
+        
+        if (!optimizedText || !fallbackBraille) {
+            console.error('Required elements not found');
+            return;
+        }
+        
+        // Get the text content (handle both direct text and nested elements)
+        let text = optimizedText.textContent || optimizedText.innerText || '';
+        
+        if (!text.trim()) {
+            console.log('No text content found for Braille conversion');
+            return;
+        }
+        
+        // Convert to Braille
+        let brailleText = textToBraille(text);
+        
+        // Format with proper line breaks
+        brailleText = formatBrailleText(brailleText);
+        
+        // Update the UI
+        fallbackBraille.textContent = brailleText;
+        fallbackBraille.style.display = 'block';
+        fallbackBraille.style.fontFamily = "'Courier New', monospace";
+        fallbackBraille.style.fontSize = '18px';
+        fallbackBraille.style.lineHeight = '1.6';
+        fallbackBraille.style.letterSpacing = '0.2em';
+        fallbackBraille.style.whiteSpace = 'pre-wrap';
+        fallbackBraille.style.color = '#4c1d95';
+        fallbackBraille.style.width = '100%';
+        fallbackBraille.style.maxWidth = '100%';
+        fallbackBraille.style.overflow = 'auto';
+        fallbackBraille.style.padding = '1em';
+        fallbackBraille.style.backgroundColor = '#fff';
+        fallbackBraille.style.borderRadius = '0.5em';
+        fallbackBraille.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        
+        // Hide the error message
+        if (errorElement) {
+            errorElement.style.display = 'none';
+        }
+        
+        console.log('Client-side Braille conversion successful');
+        
+    } catch (e) {
+        console.error('Client-side Braille conversion failed:', e);
+        const errorElement = document.getElementById('braille-error');
+        if (errorElement) {
+            errorElement.textContent = `Error: ${e.message}`;
+            errorElement.style.color = '#dc2626';
+        }
+    }
+}
+
+// Run conversion when the page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Try server-side Braille first, fallback to client-side after a delay
+        setTimeout(convertToBrailleClientSide, 1000);
+    });
+} else {
+    // DOM already loaded
+    setTimeout(convertToBrailleClientSide, 1000);
+}
+
+// Also try converting when the page is fully loaded (in case of dynamic content)
+window.addEventListener('load', function() {
+    setTimeout(convertToBrailleClientSide, 1500);
 });
 </script>
 {% endblock %}
