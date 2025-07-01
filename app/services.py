@@ -819,7 +819,7 @@ class BrailleConversionService:
                 
                 if (is_title or is_section_break or 
                     (is_header and not wrapped_lines[i+1].startswith('  ') and 
-                     not wrapped_lines[i+1].startswith(('-', '*', '•', '‣', '⁃'))):
+                     not wrapped_lines[i+1].startswith(('-', '*', '•', '‣', '⁃')))):  # Added missing closing parenthesis
                     result.append('')
         
         return '\n'.join(result).strip()
