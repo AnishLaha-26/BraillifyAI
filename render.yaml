@@ -10,6 +10,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.16
+      - key: FLASK_APP
+        value: run.py
       - key: FLASK_ENV
         value: production
       - key: UPLOAD_FOLDER
@@ -17,7 +19,7 @@ services:
       - key: MAX_CONTENT_LENGTH
         value: "16777216"  # 16MB
       - key: BRAILLE_API_URL
-        value: http://localhost:10001  # Localhost since it's in the same container
+        value: http://localhost:10001
       - key: PORT
         value: 10000
       - key: PYTHONUNBUFFERED
