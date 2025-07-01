@@ -574,7 +574,7 @@ class OCRService:
 
 
 class BrailleConversionService:
-    """Service for converting text to braille and handling pagination"""
+    """Simple Braille conversion service with basic character mapping"""
     
     def __init__(self):
         # Braille page specifications (standard US braille paper)
@@ -582,50 +582,53 @@ class BrailleConversionService:
         self.BRAILLE_LINES_PER_PAGE = 25  # Standard braille page height
         self.CHARS_PER_PAGE = self.BRAILLE_CHARS_PER_LINE * self.BRAILLE_LINES_PER_PAGE
         
-        # Initialize local Braille converter
-        try:
-            from braille_api import BrailleConverter
-            self.converter = BrailleConverter()
-        except ImportError:
-            print("Warning: Could not import BrailleConverter from braille_api. Using fallback.")
-            self.converter = None
+        # Basic Braille mapping (letters a-z, numbers, and common punctuation)
+        self.braille_map = {
+            # Lowercase letters
+            'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑', 'f': '⠋', 'g': '⠛', 'h': '⠓',
+            'i': '⠊', 'j': '⠚', 'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕', 'p': '⠏',
+            'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞', 'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭',
+            'y': '⠽', 'z': '⠵',
+            
+            # Numbers (prefixed with number sign)
+            '0': '⠴', '1': '⠂', '2': '⠆', '3': '⠒', '4': '⠲', '5': '⠢',
+            '6': '⠖', '7': '⠦', '8': '⠔',
+            
+            # Punctuation and symbols
+            ' ': ' ', '\n': '\n', '\t': '  ',
+            '.': '⠄', ',': '⠂', '?': '⠢', '!': '⠖', ';': '⠆', ':': '⠒',
+            '-': '⠤', '(': '⠣', ')': '⠜', '"': '⠦', "'": '⠄',
+            '/': '⠌', '\\': '⠡', '@': '⠈', '#': '⠼', '$': '⠈⠎',
+            '%': '⠨⠴', '&': '⠈⠯', '*': '⠐⠔', '+': '⠬', '=': '⠅',
+            '<': '⠣', '>': '⠜', '[': '⠪', ']': '⠻',
+            
+            # Uppercase letters (same as lowercase for now, could add capitalization mark later)
+            'A': '⠁', 'B': '⠃', 'C': '⠉', 'D': '⠙', 'E': '⠑', 'F': '⠋', 'G': '⠛', 'H': '⠓',
+            'I': '⠊', 'J': '⠚', 'K': '⠅', 'L': '⠇', 'M': '⠍', 'N': '⠝', 'O': '⠕', 'P': '⠏',
+            'Q': '⠟', 'R': '⠗', 'S': '⠎', 'T': '⠞', 'U': '⠥', 'V': '⠧', 'W': '⠺', 'X': '⠭',
+            'Y': '⠽', 'Z': '⠵',
+        }
     
-    def convert_to_braille(self, text: str, grade: int = 2) -> Dict[str, any]:
+    def convert_to_braille(self, text: str, grade: int = 1) -> Dict[str, any]:
         """
-        Convert text to braille using the local BrailleConverter
+        Convert text to braille using simple character mapping
         
         Args:
             text: Text to convert
-            grade: Braille grade (1 or 2)
+            grade: Braille grade (ignored in this simple implementation)
             
         Returns:
             Dictionary with braille conversion results
         """
+        if not text or not text.strip():
+            return self._create_error_response("No text provided for conversion")
+        
         try:
-            if not text or not text.strip():
-                return {
-                    "braille_text": "",
-                    "original_text": text,
-                    "formatted_text": "",
-                    "grade": grade,
-                    "pagination": {},
-                    "status": "error",
-                    "error": "No text provided for conversion"
-                }
+            # Convert text to braille
+            braille_text = ''.join(self.braille_map.get(c.lower(), c) for c in text)
             
-            # Format text for Braille conversion
-            formatted_text = self._format_for_braille(text)
-            
-            # Convert to Braille using local converter
-            if self.converter:
-                result = self.converter.convert_to_braille({
-                    "text": formatted_text,
-                    "grade": grade
-                })
-                braille_text = result.get("braille", "")
-            else:
-                # Fallback to simple character mapping if converter not available
-                braille_text = self._simple_braille_mapping(formatted_text)
+            # Format with basic line breaks
+            formatted_text = self._basic_formatting(text)
             
             # Calculate pagination
             pagination = self._calculate_pagination(braille_text)
@@ -634,270 +637,49 @@ class BrailleConversionService:
                 "braille_text": braille_text,
                 "original_text": text,
                 "formatted_text": formatted_text,
-                "grade": grade,
+                "grade": 1,  # Always grade 1 for this simple implementation
                 "pagination": pagination,
                 "status": "success"
             }
             
         except Exception as e:
             print(f"DEBUG: Braille conversion error: {e}")
-            return {
-                "braille_text": "",
-                "original_text": text,
-                "formatted_text": "",
-                "grade": grade,
-                "pagination": {},
-                "status": "error",
-                "error": str(e)
-            }
+            return self._create_error_response(str(e))
     
-    def _simple_braille_mapping(self, text: str) -> str:
-        """Simple fallback Braille mapping"""
-        mapping = {
-            'a': '⠁', 'b': '⠃', 'c': '⠉', 'd': '⠙', 'e': '⠑', 'f': '⠋', 'g': '⠛', 'h': '⠓',
-            'i': '⠊', 'j': '⠚', 'k': '⠅', 'l': '⠇', 'm': '⠍', 'n': '⠝', 'o': '⠕', 'p': '⠏',
-            'q': '⠟', 'r': '⠗', 's': '⠎', 't': '⠞', 'u': '⠥', 'v': '⠧', 'w': '⠺', 'x': '⠭',
-            'y': '⠽', 'z': '⠵', ' ': ' ', '\n': '\n'
-        }
-        return ''.join(mapping.get(c.lower(), c) for c in text)
-    
-    def _format_for_braille(self, text: str) -> str:
-        """
-        Format text according to strict Braille standards before conversion.
-        Implements precise Braille formatting rules with strict line length enforcement.
-        """
-        if not text or not text.strip():
+    def _basic_formatting(self, text: str) -> str:
+        """Apply basic formatting to text"""
+        if not text:
             return text
-            
-        # Preserve original line breaks for better structure analysis
-        lines = text.split('\n')
-        formatted_lines = []
         
-        # Track context for better formatting decisions
-        in_list = False
-        prev_line_was_blank = False
-        
-        for i, line in enumerate(lines):
-            line = line.strip()
-            
-            # Handle empty lines (paragraph breaks)
-            if not line:
-                if not prev_line_was_blank:  # Don't add multiple blank lines
-                    formatted_lines.append('')
-                    prev_line_was_blank = True
-                continue
-                
-            # Check for list items (various bullet styles and numbers)
-            is_list_item = (re.match(r'^\s*[-*•‣⁃]\s+', line) or  # Bullet points
-                           re.match(r'^\s*\d+[\.\)]\s+', line))     # Numbered lists
-            
-            # Check for titles/headers (short, centered, or all-caps lines)
-            is_title = (len(line) < 50 and 
-                       not any(p in line for p in '.!?') and
-                       not is_list_item and
-                       (i > 0 and i < len(lines)-1 and not lines[i-1].strip() and not lines[i+1].strip()))
-            
-            # Add spacing before titles and after list items
-            if is_title and formatted_lines and formatted_lines[-1] != '':
-                formatted_lines.append('')
-            elif is_list_item and not in_list and formatted_lines and formatted_lines[-1] != '':
-                formatted_lines.append('')
-            
-            # Process the line based on its type
-            if is_title:
-                formatted_lines.append(line.upper())
-                formatted_lines.append('')  # Blank line after title
-                prev_line_was_blank = True
-                in_list = False
-            elif is_list_item:
-                # Standardize list item formatting
-                if re.match(r'^\s*[•‣⁃]', line):
-                    line = re.sub(r'^\s*[•‣⁃]\s*', '- ', line)
-                formatted_lines.append(line)
-                in_list = True
-                prev_line_was_blank = False
-            else:
-                # Regular paragraph - add 2-space indent if not already indented
-                if not line.startswith('  '):
-                    line = '  ' + line
-                formatted_lines.append(line)
-                in_list = False
-                prev_line_was_blank = False
-        
-        # Join lines and clean up spacing
-        formatted_text = '\n'.join(formatted_lines)
-        
-        # Apply Braille-specific formatting rules
-        formatted_text = re.sub(r'\s+', ' ', formatted_text)  # Single spaces only
-        
-        # Fix spacing around punctuation
-        formatted_text = re.sub(r'\s*([,.!?;:])\s*', r'\1 ', formatted_text)
-        formatted_text = re.sub(r'\s+([.!?])\s*$', r'\1', formatted_text, flags=re.MULTILINE)
-        
-        # Ensure proper capitalization after sentence endings
-        formatted_text = re.sub(r'([.!?]\s+)([a-z])', 
-                              lambda m: m.group(1) + m.group(2).upper(), 
-                              formatted_text)
-        
-        # Split into lines and process each line individually
-        lines = formatted_text.split('\n')
-        wrapped_lines = []
-        
-        for line in lines:
-            if not line.strip():
-                wrapped_lines.append('')
-                continue
-                
-            # Preserve indentation
-            indent = ''
-            if line.startswith('  '):
-                indent = '  '
-                line = line[2:].lstrip()
-            
-            # Special handling for list items
-            is_list_item = line.startswith(('-', '*', '•', '‣', '⁃')) or \
-                         re.match(r'^\d+[\.\)]', line)
-            
-            if is_list_item:
-                # Handle list items with hanging indent
-                bullet = ''
-                if line.startswith('-'):
-                    bullet = '- '
-                    line = line[1:].lstrip()
-                elif re.match(r'^\d+[\.\)]', line):
-                    bullet = re.match(r'^(\d+[\.\)]\s*)', line).group(1)
-                    line = line[len(bullet):].lstrip()
-                
-                # Process the list item content with hanging indent
-                content_lines = []
-                current_line = bullet + line
-                
-                while len(current_line) > self.BRAILLE_CHARS_PER_LINE:
-                    # Find last space before line break
-                    wrap_pos = current_line.rfind(' ', len(bullet), self.BRAILLE_CHARS_PER_LINE + 1)
-                    if wrap_pos <= len(bullet):  # No space found in first line
-                        wrap_pos = current_line.find(' ', len(bullet) + 1)
-                        if wrap_pos == -1:  # No space at all
-                            wrap_pos = min(len(current_line), self.BRAILLE_CHARS_PER_LINE)
-                    
-                    content_lines.append(current_line[:wrap_pos].rstrip())
-                    current_line = ' ' * (len(bullet) + 2) + current_line[wrap_pos:].lstrip()
-                
-                if current_line:
-                    content_lines.append(current_line)
-                
-                wrapped_lines.extend(content_lines)
-            else:
-                # Regular text wrapping
-                while len(line) > self.BRAILLE_CHARS_PER_LINE:
-                    # Try to break at word boundaries - be more aggressive
-                    wrap_pos = line[:self.BRAILLE_CHARS_PER_LINE].rfind(' ')
-                    if wrap_pos <= 0:  # No space found, force break
-                        wrap_pos = self.BRAILLE_CHARS_PER_LINE - 3  # Leave 3 char margin for safety
-                    wrapped_lines.append(indent + line[:wrap_pos].rstrip())
-                    line = line[wrap_pos:].lstrip()
-                    indent = '  '  # Indent wrapped lines
-                
-                if line:  # Add the remaining part of the line
-                    wrapped_lines.append(indent + line)
-        
-        # Ensure consistent spacing between sections
-        result = []
-        for i, line in enumerate(wrapped_lines):
-            result.append(line)
-            # Add blank line after titles and before new sections
-            if i < len(wrapped_lines) - 1:
-                is_title = line.isupper()
-                is_section_break = line.strip() and not wrapped_lines[i+1].strip()
-                is_header = bool(re.match(r'^\s*[A-Z][^.!?]*$', line))
-                
-                if (is_title or is_section_break or 
-                    (is_header and not wrapped_lines[i+1].startswith('  ') and 
-                     not wrapped_lines[i+1].startswith(('-', '*', '•', '‣', '⁃')))):  # Added missing closing parenthesis
-                    result.append('')
+        # Simple formatting: ensure text ends with a newline
+        return text.strip() + '\n'
     
-        return '\n'.join(result).strip()
+    def _create_error_response(self, error_msg: str) -> Dict[str, any]:
+        """Create a standardized error response"""
+        return {
+            "braille_text": "",
+            "original_text": "",
+            "formatted_text": "",
+            "grade": 1,
+            "pagination": {},
+            "status": "error",
+            "error": error_msg
+        }
     
     def _calculate_pagination(self, braille_text: str) -> Dict[str, any]:
         """Calculate pagination for braille text"""
         lines = braille_text.split('\n')
         total_chars = len(braille_text.replace('\n', ''))
         
-        # Calculate pages needed
-        pages_needed = math.ceil(total_chars / self.CHARS_PER_PAGE)
-        
-        # Break text into pages
-        pages = []
-        current_page = []
-        current_page_chars = 0
-        current_page_lines = 0
-        
-        for line in lines:
-            line_length = len(line)
-            lines_needed = math.ceil(line_length / self.BRAILLE_CHARS_PER_LINE) if line_length > 0 else 1
-            
-            # Check if line fits on current page
-            if (current_page_lines + lines_needed <= self.BRAILLE_LINES_PER_PAGE and 
-                current_page_chars + line_length <= self.CHARS_PER_PAGE):
-                current_page.append(line)
-                current_page_chars += line_length
-                current_page_lines += lines_needed
-            else:
-                # Start new page
-                if current_page:
-                    pages.append({
-                        "page_number": len(pages) + 1,
-                        "lines": current_page.copy(),
-                        "char_count": current_page_chars,
-                        "line_count": current_page_lines
-                    })
-                
-                current_page = [line]
-                current_page_chars = line_length
-                current_page_lines = lines_needed
-        
-        # Add last page
-        if current_page:
-            pages.append({
-                "page_number": len(pages) + 1,
-                "lines": current_page,
-                "char_count": current_page_chars,
-                "line_count": current_page_lines
-            })
-        
+        # Simple pagination: just count lines and characters
         return {
-            "total_pages": len(pages),
+            "total_pages": max(1, len(lines) // self.BRAILLE_LINES_PER_PAGE),
             "total_characters": total_chars,
             "total_lines": len(lines),
             "chars_per_page": self.CHARS_PER_PAGE,
             "lines_per_page": self.BRAILLE_LINES_PER_PAGE,
             "chars_per_line": self.BRAILLE_CHARS_PER_LINE,
-            "pages": pages
         }
-    
-    def get_page_content(self, braille_text: str, page_number: int) -> Dict[str, any]:
-        """Get content for a specific page"""
-        pagination_info = self._calculate_pagination(braille_text)
-        
-        if page_number < 1 or page_number > pagination_info["total_pages"]:
-            return {
-                "page_content": "",
-                "page_number": page_number,
-                "status": "error",
-                "error": "Page number out of range"
-            }
-        
-        page_data = pagination_info["pages"][page_number - 1]
-        page_content = '\n'.join(page_data["lines"])
-        
-        return {
-            "page_content": page_content,
-            "page_number": page_number,
-            "char_count": page_data["char_count"],
-            "line_count": page_data["line_count"],
-            "status": "success"
-        }
-
 
 class GCodeGenerationService:
     """

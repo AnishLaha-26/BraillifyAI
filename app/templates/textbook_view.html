@@ -276,14 +276,35 @@ function downloadFile(type) {
     }, 2000);
 }
 
+function downloadGCode() {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    
+    // Get the upload ID from the URL
+    const pathParts = window.location.pathname.split('/');
+    const uploadId = pathParts[pathParts.length - 1];
+    
+    // Create a temporary link to trigger the download
+    const link = document.createElement('a');
+    link.href = `/download/gcode/${uploadId}`;
+    link.download = `braille_${uploadId}.gcode`;
+    
+    // Append to body, click and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Hide loading overlay after a short delay
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }, 2000);
+}
+
 function previewGCode() {
     // TO DO: implement preview functionality
     console.log('Preview G-code button clicked');
-}
-
-function downloadGCode() {
-    // TO DO: implement download functionality
-    console.log('Download G-code button clicked');
 }
 
 // Pagination simulation for display
